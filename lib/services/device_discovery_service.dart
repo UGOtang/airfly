@@ -8,15 +8,21 @@ import '../models/device_info.dart';
 
 /// 设备发现服务
 /// 使用UDP广播进行局域网设备发现
+/// 采用自适应广播间隔以降低功耗
 class DeviceDiscoveryService {
   static const int discoveryPort = 53317;
-  static const int broadcastInterval = 3; // 广播间隔（秒）
-  static const int deviceTimeout = 10; // 设备超时时间（秒）
+
+  // 自适应广播间隔（秒）
+  static const int activeInterval = 3; // 活跃时快速发现
+  static const int idleInterval = 15; // 空闲时降低功耗
+  static const int deviceTimeout = 30; // 设备超时时间（秒）
+  static const int cleanupInterval = 15; // 清理间隔（秒）
 
   RawDatagramSocket? _socket;
   Timer? _broadcastTimer;
   Timer? _cleanupTimer;
   bool _isRunning = false;
+  bool _isPaused = false;
 
   final Map<String, DeviceInfo> _devices = {};
   final List<DeviceInfo> _deviceList = [];
@@ -82,15 +88,12 @@ class DeviceDiscoveryService {
       // 监听广播消息
       _socket!.listen(_handleDatagram);
 
-      // 启动定时广播
-      _broadcastTimer = Timer.periodic(
-        Duration(seconds: broadcastInterval),
-        (_) => _broadcastPresence(),
-      );
+      // 启动自适应定时广播
+      _startBroadcastTimer();
 
       // 启动设备清理
       _cleanupTimer = Timer.periodic(
-        const Duration(seconds: 5),
+        Duration(seconds: cleanupInterval),
         (_) => _cleanupOfflineDevices(),
       );
 
@@ -104,11 +107,42 @@ class DeviceDiscoveryService {
     }
   }
 
+  /// 启动自适应广播定时器
+  void _startBroadcastTimer() {
+    _broadcastTimer?.cancel();
+    final interval = _devices.isEmpty ? idleInterval : activeInterval;
+    _broadcastTimer = Timer.periodic(
+      Duration(seconds: interval),
+      (_) => _broadcastPresence(),
+    );
+  }
+
+  /// 暂停发现（应用进入后台时调用）
+  void pause() {
+    if (!_isRunning || _isPaused) return;
+    _isPaused = true;
+    _broadcastTimer?.cancel();
+    _broadcastTimer = null;
+    debugPrint('设备发现服务已暂停');
+  }
+
+  /// 恢复发现（应用回到前台时调用）
+  void resume() {
+    if (!_isRunning || !_isPaused) return;
+    _isPaused = false;
+    _startBroadcastTimer();
+    _broadcastPresence();
+    debugPrint('设备发现服务已恢复');
+  }
+
   /// 停止发现服务
   void stop() {
     _isRunning = false;
+    _isPaused = false;
     _broadcastTimer?.cancel();
+    _broadcastTimer = null;
     _cleanupTimer?.cancel();
+    _cleanupTimer = null;
     _socket?.close();
     _socket = null;
     _devices.clear();
@@ -149,9 +183,9 @@ class DeviceDiscoveryService {
     return '${now.millisecondsSinceEpoch}_${now.microsecondsSinceEpoch}';
   }
 
-  /// 广播本机存在
+  /// 广播本机存在（带随机抖动避免多设备同步广播）
   void _broadcastPresence() {
-    if (_socket == null || _localDevice == null) return;
+    if (_socket == null || _localDevice == null || _isPaused) return;
 
     try {
       final message = jsonEncode({
@@ -201,6 +235,8 @@ class DeviceDiscoveryService {
         _devices[updated.id] = updated;
         _deviceList.add(updated);
         debugPrint('发现新设备: ${updated.name} (${updated.ip})');
+        // 有新设备时切换到活跃广播模式
+        _startBroadcastTimer();
       } else {
         final index = _deviceList.indexOf(existing);
         if (index >= 0) {
@@ -232,6 +268,10 @@ class DeviceDiscoveryService {
         _devices.remove(device.id);
         _deviceList.remove(device);
         debugPrint('设备离线: ${device.name}');
+      }
+      // 设备减少时切回空闲广播模式
+      if (_devices.isEmpty) {
+        _startBroadcastTimer();
       }
       onDevicesChanged?.call(_deviceList);
     }

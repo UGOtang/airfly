@@ -21,6 +21,31 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleControllerChange);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleControllerChange);
+    super.dispose();
+  }
+
+  /// 监听控制器变化，处理文件请求对话框
+  void _handleControllerChange() {
+    final pending = widget.controller.pendingRequest;
+    if (pending != null && !widget.controller.isDialogShowing) {
+      widget.controller.markDialogShown();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showFileRequestDialog(pending);
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final pages = [
       DevicesScreen(controller: widget.controller),
@@ -33,21 +58,9 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: const BoxDecoration(
           gradient: AppTheme.bgGradient,
         ),
-        child: AnimatedBuilder(
-          animation: widget.controller,
-          builder: (context, _) {
-            final pending = widget.controller.pendingRequest;
-            if (pending != null && !widget.controller.isDialogShowing) {
-              widget.controller.markDialogShown();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _showFileRequestDialog(pending);
-              });
-            }
-            return IndexedStack(
-              index: _currentIndex,
-              children: pages,
-            );
-          },
+        child: IndexedStack(
+          index: _currentIndex,
+          children: pages,
         ),
       ),
       bottomNavigationBar: Container(

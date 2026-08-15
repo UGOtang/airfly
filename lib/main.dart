@@ -16,17 +16,37 @@ class AirFlyApp extends StatefulWidget {
   State<AirFlyApp> createState() => _AirFlyAppState();
 }
 
-class _AirFlyAppState extends State<AirFlyApp> {
+class _AirFlyAppState extends State<AirFlyApp> with WidgetsBindingObserver {
   final AppController _controller = AppController();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller.initialize();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        // 应用进入后台，暂停服务以降低功耗
+        _controller.onAppPaused();
+        break;
+      case AppLifecycleState.resumed:
+        // 应用回到前台，恢复服务
+        _controller.onAppResumed();
+        break;
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
   }

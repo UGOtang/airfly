@@ -9,11 +9,15 @@ import '../models/transfer_item.dart';
 
 /// 文件传输服务
 /// 使用TCP进行文件传输
+/// 支持空闲超时和后台暂停以降低功耗
 class FileTransferService {
   static const int transferPort = 53318;
+  static const int idleTimeout = 5 * 60; // 空闲超时（秒）
 
   ServerSocket? _serverSocket;
   bool _isRunning = false;
+  bool _isPaused = false;
+  Timer? _idleTimer;
 
   /// 传输项列表
   final List<TransferItem> _transfers = [];
@@ -46,6 +50,7 @@ class FileTransferService {
 
       _serverSocket!.listen(_handleConnection);
       _isRunning = true;
+      _resetIdleTimer();
       debugPrint('文件传输服务已启动: 端口 $transferPort');
     } catch (e) {
       debugPrint('启动文件传输服务失败: $e');
@@ -56,14 +61,44 @@ class FileTransferService {
   /// 停止传输服务
   void stop() {
     _isRunning = false;
+    _isPaused = false;
+    _idleTimer?.cancel();
+    _idleTimer = null;
     _serverSocket?.close();
     _serverSocket = null;
     debugPrint('文件传输服务已停止');
   }
 
+  /// 暂停传输服务（应用进入后台时调用）
+  void pause() {
+    if (!_isRunning || _isPaused) return;
+    _isPaused = true;
+    _idleTimer?.cancel();
+    _idleTimer = null;
+    debugPrint('文件传输服务已暂停');
+  }
+
+  /// 恢复传输服务（应用回到前台时调用）
+  void resume() {
+    if (!_isRunning || !_isPaused) return;
+    _isPaused = false;
+    _resetIdleTimer();
+    debugPrint('文件传输服务已恢复');
+  }
+
+  /// 重置空闲定时器
+  void _resetIdleTimer() {
+    _idleTimer?.cancel();
+    _idleTimer = Timer(Duration(seconds: idleTimeout), () {
+      debugPrint('文件传输服务空闲超时，自动停止');
+      stop();
+    });
+  }
+
   /// 处理新连接
   void _handleConnection(Socket socket) {
     debugPrint('收到连接: ${socket.remoteAddress.address}');
+    _resetIdleTimer();
     socket.listen(
       (data) => _handleData(socket, data),
       onError: (error) {

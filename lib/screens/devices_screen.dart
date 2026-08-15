@@ -141,7 +141,8 @@ class _DevicesScreenState extends State<DevicesScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const CircularProgressIndicator(),
+          // 使用静态脉冲动画替代持续旋转的进度指示器，降低功耗
+          const _PulseRadar(),
         ],
       ),
     );
@@ -307,6 +308,65 @@ class _DevicesScreenState extends State<DevicesScreen> {
         ),
       );
     }
+  }
+}
+
+/// 脉冲雷达动画 - 低功耗的静态脉冲效果
+class _PulseRadar extends StatefulWidget {
+  const _PulseRadar();
+
+  @override
+  State<_PulseRadar> createState() => _PulseRadarState();
+}
+
+class _PulseRadarState extends State<_PulseRadar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppTheme.primaryBlue.withValues(
+                alpha: 0.6 * (1 - _controller.value),
+              ),
+              width: 2,
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.radar_rounded,
+              size: 24,
+              color: AppTheme.primaryBlue.withValues(
+                alpha: 0.4 + 0.6 * _controller.value,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

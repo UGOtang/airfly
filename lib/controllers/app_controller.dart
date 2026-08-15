@@ -30,6 +30,11 @@ class AppController extends ChangeNotifier {
   TransferItem? _pendingRequest;
   bool _isDialogShowing = false;
 
+  /// 节流通知
+  Timer? _notifyThrottle;
+  bool _hasPendingNotify = false;
+  static const Duration _notifyInterval = Duration(milliseconds: 100);
+
   /// 获取设备列表
   List<DeviceInfo> get devices => _devices;
 
@@ -63,17 +68,17 @@ class AppController extends ChangeNotifier {
       // 设置回调
       _discoveryService.onDevicesChanged = (devices) {
         _devices = devices;
-        notifyListeners();
+        _throttledNotify();
       };
 
       _transferService.onTransfersChanged = (transfers) {
         _transfers = transfers;
-        notifyListeners();
+        _throttledNotify();
       };
 
       _transferService.onFileRequest = (item, sender) {
         _pendingRequest = item;
-        notifyListeners();
+        _throttledNotify();
       };
 
       // 启动服务（Web平台不支持时自动跳过）
@@ -81,10 +86,34 @@ class AppController extends ChangeNotifier {
       await _startDiscovery();
 
       _isInitialized = true;
-      notifyListeners();
+      _throttledNotify();
     } catch (e) {
       debugPrint('初始化失败: $e');
     }
+  }
+
+  /// 节流通知，避免高频重建
+  void _throttledNotify() {
+    _hasPendingNotify = true;
+    _notifyThrottle ??= Timer(_notifyInterval, () {
+      _notifyThrottle = null;
+      if (_hasPendingNotify) {
+        _hasPendingNotify = false;
+        notifyListeners();
+      }
+    });
+  }
+
+  /// 应用进入后台
+  void onAppPaused() {
+    _discoveryService.pause();
+    _transferService.pause();
+  }
+
+  /// 应用回到前台
+  void onAppResumed() {
+    _discoveryService.resume();
+    _transferService.resume();
   }
 
   /// 检测设备信息
@@ -121,7 +150,7 @@ class AppController extends ChangeNotifier {
   /// 启动设备发现
   Future<void> _startDiscovery() async {
     _isDiscovering = true;
-    notifyListeners();
+    _throttledNotify();
 
     await _discoveryService.start(
       deviceName: _deviceName,
@@ -131,7 +160,7 @@ class AppController extends ChangeNotifier {
     );
 
     _isDiscovering = false;
-    notifyListeners();
+    _throttledNotify();
   }
 
   /// 刷新设备列表
@@ -148,7 +177,7 @@ class AppController extends ChangeNotifier {
     // 重启发现服务以更新名称
     _discoveryService.stop();
     await _startDiscovery();
-    notifyListeners();
+    _throttledNotify();
   }
 
   /// 选择文件并发送
@@ -174,7 +203,7 @@ class AppController extends ChangeNotifier {
     _transferService.acceptFile(item);
     _pendingRequest = null;
     _isDialogShowing = false;
-    notifyListeners();
+    _throttledNotify();
   }
 
   /// 拒绝文件请求
@@ -185,7 +214,7 @@ class AppController extends ChangeNotifier {
     _transferService.rejectFile(item);
     _pendingRequest = null;
     _isDialogShowing = false;
-    notifyListeners();
+    _throttledNotify();
   }
 
   /// 检查对话框是否正在显示
@@ -218,6 +247,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _notifyThrottle?.cancel();
     _discoveryService.dispose();
     _transferService.dispose();
     super.dispose();
