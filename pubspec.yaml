@@ -2,7 +2,7 @@ name: airfly
 description: "轻巧优雅的多端同步工具 - 云中转剪切板与文件共享"
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 2.0.0+2
 
 environment:
   sdk: ^3.12.2
@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  file_picker: ^8.1.2
+  file_picker: 12.2.0
   path_provider: ^2.1.5
   shared_preferences: ^2.3.3
   web_socket_channel: ^3.0.3

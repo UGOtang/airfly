@@ -145,7 +145,15 @@ server {
 ```bash
 flutter pub get
 flutter analyze          # 静态检查（须零问题）
-flutter test             # 14 个单测 + widget 冒烟
+flutter test             # 单测 + widget 冒烟
 dart integration/check.dart  # 端到端：真起服务端验 presence/剪切板/上传/下载/续传/重启恢复
 flutter build web        # Web 构建验证
+```
+
+打 Android 包需要 JDK 17（`JAVA_HOME` 指向它），release 清单已内置
+`INTERNET` 权限与明文流量允许（`ws://` 用）：
+
+```powershell
+$env:JAVA_HOME = "C:\Users\<你>\jdk-17\jdk-17.0.20.1+1"
+flutter build apk --release  # 产物：build/app/outputs/flutter-apk/app-release.apk
 ```

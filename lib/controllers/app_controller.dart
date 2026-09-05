@@ -340,44 +340,64 @@ class AppController extends ChangeNotifier {
 
   static const int kWebSoftLimit = 100 * 1024 * 1024;
 
+  /// 无本地路径时的内存读取上限（移动端 SAF 等场景），超了请用桌面端。
+  static const int kMemoryReadLimit = 200 * 1024 * 1024;
+
   Future<void> pickAndUpload() async {
-    FilePickerResult? result;
+    List<PlatformFile> files;
     try {
-      result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
-        withData: kIsWeb,
-      );
+      files = await FilePicker.pickFiles();
     } catch (e) {
       throw '选择文件失败：$e';
     }
-    if (result == null || result.files.isEmpty) return;
+    if (files.isEmpty) return;
     if (!service.isConnected) throw '未连接到服务端，请先连接';
-    for (final f in result.files) {
-      if (f.size <= 0) {
+    for (final f in files) {
+      int size;
+      try {
+        size = f.lengthSync() ?? await f.length();
+      } catch (_) {
+        _addFailedUpload(f.name, '无法读取该文件大小');
+        continue;
+      }
+      if (size <= 0) {
         _addFailedUpload(f.name, '空文件，跳过');
         continue;
       }
-      if (f.size > service.maxFileBytes) {
+      if (size > service.maxFileBytes) {
         _addFailedUpload(f.name, '超出服务端单文件上限');
         continue;
       }
-      if (kIsWeb && f.size > kWebSoftLimit) {
+      if (kIsWeb && size > kWebSoftLimit) {
         _addFailedUpload(f.name, 'Web 端建议传 100MB 以内文件');
         continue;
       }
-      if (!kIsWeb && (f.path == null || f.path!.isEmpty) && f.bytes == null) {
-        _addFailedUpload(f.name, '无法读取该文件');
-        continue;
-      }
-      if (kIsWeb && f.bytes == null) {
-        _addFailedUpload(f.name, '无法读取该文件');
-        continue;
+      var path = f.path;
+      Uint8List? bytes;
+      if (path == null || path.isEmpty) {
+        // 无本地路径（如 Web / SAF）：一次性读入内存
+        if (!kIsWeb && size > kMemoryReadLimit) {
+          _addFailedUpload(f.name, '文件较大且无法直接读取，请用桌面端发送');
+          continue;
+        }
+        try {
+          bytes = await f.readAsBytes();
+        } catch (e) {
+          _addFailedUpload(f.name, '读取文件失败：$e');
+          continue;
+        }
+        if (bytes.length != size) size = bytes.length;
+        if (size <= 0) {
+          _addFailedUpload(f.name, '空文件，跳过');
+          continue;
+        }
+        path = null;
       }
       unawaited(_startUpload(
         name: f.name,
-        size: f.size,
-        path: kIsWeb ? null : f.path,
-        bytes: f.bytes,
+        size: size,
+        path: path,
+        bytes: bytes,
       ));
     }
     _throttledNotify();
