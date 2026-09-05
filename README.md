@@ -161,3 +161,40 @@ flutter build web        # Web 构建验证
 $env:JAVA_HOME = "C:\Users\<你>\jdk-17\jdk-17.0.20.1+1"
 flutter build apk --release  # 产物：build/app/outputs/flutter-apk/app-release.apk
 ```
+
+## 独立二进制终端（dist/airfly-term-*）
+
+`tool/terminal.dart` 编译出的单文件终端，不依赖 Flutter App：
+
+```bash
+dart compile exe tool/terminal.dart -o airfly-term  # Linux 云服务器上同样命令产出 Linux 版
+```
+
+- 有 TTY 时默认**真 shell 模式**：控制台直接交给系统 shell
+  （Windows 默认 PowerShell，`--cmd/--ps/--pwsh` 可选；Unix 用 `$SHELL`），
+  补全、交互程序、Ctrl+C 全是原生行为，退出码透传。
+  若 shell 瞬间退出（多见于个别终端输入继承失败），程序会直接提示，
+  用 `airfly-term --new-window` 可在全新控制台窗口打开（兜底）。
+- 无 TTY（管道/重定向）自动降级**行模式**（`--line` 强制），内置
+  help/echo/cd/clear，适合脚本。
+- 本程序自身输出为 UTF-8；旧版 cmd 若显示乱码请先执行 `chcp 65001`
+ （真 shell 模式不受影响，子进程直写控制台）。
+
+## 云空间 TUI 客户端（dist/airfly-tui-*，btop 风格）
+
+直连云服务端的可视化终端面板（Linux/macOS 同样命令编译即用）：
+
+```bash
+airfly-tui --server ws://host:port/ws --space 空间码 [--key 密码]
+# 也可用环境变量：AIRFLY_SERVER / AIRFLY_SPACE / AIRFLY_KEY / AIRFLY_NAME / AIRFLY_API
+```
+
+- 三面板：在线设备 / 文件（含上传下载进度条）/ 剪切板历史
+- 键盘：Tab 切换面板，↑↓/jk 选择，Enter 动作，p 推送剪切板，
+  u 上传（输本地路径），d 下载到 `./airfly-downloads/`，x 删除（需确认），
+  c 取消传输，v 复制到系统剪切板，r 刷新，? 帮助，q 退出
+- 鼠标：点面板聚焦、点行选中（点文件行直接下载）、滚轮滚动、
+  点底部按钮（`--no-mouse` 可关闭）
+- 自测：`dart tool/check_tui_core.dart`（原语）
+  `dart tool/check_tui.dart`（渲染对齐/键鼠/输入条）
+  `dart tool/check_relay.dart`（真起服务端联调纯 Dart 客户端）
