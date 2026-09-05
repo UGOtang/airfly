@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../controllers/app_controller.dart';
 import '../services/cloud_service.dart';
@@ -30,24 +31,30 @@ class _HomeScreenState extends State<HomeScreen> {
       SettingsScreen(controller: widget.controller),
     ];
 
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              _StatusBar(controller: widget.controller),
-              Expanded(
-                child: IndexedStack(index: _currentIndex, children: pages),
-              ),
-            ],
+    final dark =
+        Theme.of(context).brightness == Brightness.dark;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // 自定义顶栏没有 AppBar，必须手动让状态栏图标随主题反色，
+      // 否则深色下黑图标黑底看不见。
+      value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        body: Container(
+          decoration: BoxDecoration(gradient: AppPalette.of(context).page),
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _StatusBar(controller: widget.controller),
+                Expanded(
+                  child: IndexedStack(index: _currentIndex, children: pages),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: AppTheme.bgWhite,
+          color: AppPalette.of(context).nav,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.06),
@@ -87,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -113,14 +121,18 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppTheme.deepBlue : AppTheme.textGrey,
+              color: isSelected
+                  ? AppPalette.of(context).strong
+                  : AppPalette.of(context).sub,
               size: 24,
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppTheme.deepBlue : AppTheme.textGrey,
+                color: isSelected
+                    ? AppPalette.of(context).strong
+                    : AppPalette.of(context).sub,
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               ),
@@ -189,7 +201,7 @@ class _StatusBar extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: AppPalette.of(context).chip,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -206,17 +218,17 @@ class _StatusBar extends StatelessWidget {
                         text,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.textGrey,
+                          color: AppPalette.of(context).sub,
                         ),
                       ),
                     ),
                     Text(
                       controller.deviceName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.textGrey,
+                        color: AppPalette.of(context).sub,
                       ),
                     ),
                   ],

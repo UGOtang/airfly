@@ -72,7 +72,7 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -81,13 +81,14 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.textDark,
+                    color: AppPalette.of(context).text,
                     letterSpacing: -0.5,
                   ),
                 ),
                 Text(
                   '同空间设备实时同步文本',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textGrey),
+                  style: TextStyle(
+                      fontSize: 13, color: AppPalette.of(context).sub),
                 ),
               ],
             ),
@@ -100,7 +101,7 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
   Widget _buildComposer(AppController c) {
     final connected = c.service.isConnected;
     return Container(
-      decoration: CardDecoration.soft(),
+      decoration: CardDecoration.softOf(context),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -133,7 +134,7 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
                 icon: const Icon(Icons.paste_rounded, size: 18),
                 label: const Text('粘贴'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.textGrey,
+                  foregroundColor: AppPalette.of(context).sub,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
@@ -197,7 +198,7 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
 
   Widget _buildAutoSyncCard(AppController c) {
     return Container(
-      decoration: CardDecoration.soft(),
+      decoration: CardDecoration.softOf(context),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       // SwitchListTile 的水波纹需要 Material 祖先在装饰层之内
       child: Material(
@@ -245,10 +246,10 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
         children: [
           Text(
             '同步记录（${c.service.clipHistory.length}）',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: AppTheme.textDark,
+              color: AppPalette.of(context).text,
             ),
           ),
           const Spacer(),
@@ -267,17 +268,18 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(24),
-      decoration: CardDecoration.soft(),
-      child: const Column(
+      decoration: CardDecoration.softOf(context),
+      child: Column(
         children: [
-          Icon(Icons.history_rounded, size: 40, color: AppTheme.textLight),
-          SizedBox(height: 12),
+          Icon(Icons.history_rounded,
+              size: 40, color: AppPalette.of(context).faint),
+          const SizedBox(height: 12),
           Text(
             '暂无同步记录\n在上方输入文本并同步，或在其他设备同步',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: AppTheme.textGrey,
+              color: AppPalette.of(context).sub,
               height: 1.6,
             ),
           ),
@@ -290,7 +292,7 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
     final isMine = item.deviceId == widget.controller.deviceId;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: CardDecoration.soft(),
+      decoration: CardDecoration.softOf(context),
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,7 +317,7 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: isMine
-                        ? AppTheme.deepBlue
+                        ? AppPalette.of(context).strong
                         : const Color(0xFFE65100),
                   ),
                 ),
@@ -323,9 +325,9 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
               const SizedBox(width: 8),
               Text(
                 _formatTime(item.updatedAt),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppTheme.textLight,
+                  color: AppPalette.of(context).faint,
                 ),
               ),
               const Spacer(),
@@ -343,9 +345,9 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
             item.text.length > 500
                 ? '${item.text.substring(0, 500)}…（共 ${item.text.length} 字）'
                 : item.text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppTheme.textDark,
+              color: AppPalette.of(context).text,
               height: 1.5,
             ),
           ),

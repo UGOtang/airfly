@@ -56,9 +56,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: AnimatedBuilder(
             animation: widget.controller,
             builder: (context, _) => ListView(
+              key: const Key('settings_list'),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               children: [
                 _buildConnCard(),
+                const SizedBox(height: 12),
+                _buildAppearanceCard(),
                 const SizedBox(height: 12),
                 _buildAboutCard(),
               ],
@@ -92,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -100,13 +103,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.textDark,
+                  color: AppPalette.of(context).text,
                   letterSpacing: -0.5,
                 ),
               ),
               Text(
                 '连接你的云端空间',
-                style: TextStyle(fontSize: 13, color: AppTheme.textGrey),
+                style: TextStyle(
+                    fontSize: 13, color: AppPalette.of(context).sub),
               ),
             ],
           ),
@@ -118,7 +122,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildConnCard() {
     final c = widget.controller;
     return Container(
-      decoration: CardDecoration.soft(),
+      decoration: CardDecoration.softOf(context),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -220,7 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: const Icon(Icons.link_off_rounded),
             label: const Text('断开连接'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.textGrey,
+              foregroundColor: AppPalette.of(context).sub,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -287,9 +291,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 2),
                   Text(
                     err,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.textGrey,
+                      color: AppPalette.of(context).sub,
                     ),
                   ),
                 ],
@@ -358,44 +362,108 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Widget _buildAboutCard() {
+  /// 外观切换：跟随系统 / 浅色 / 深色，即时生效并持久化。
+  Widget _buildAppearanceCard() {
+    final c = widget.controller;
     return Container(
-      decoration: CardDecoration.soft(),
+      decoration: CardDecoration.softOf(context),
       padding: const EdgeInsets.all(20),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
+              const Icon(
+                Icons.palette_rounded,
+                color: AppTheme.primaryBlue,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '外观',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppPalette.of(context).text,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<ThemeMode>(
+              segments: const [
+                ButtonSegment(
+                  value: ThemeMode.system,
+                  icon: Icon(Icons.brightness_auto_rounded, size: 18),
+                  label: Text('跟随系统'),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.light,
+                  icon: Icon(Icons.light_mode_rounded, size: 18),
+                  label: Text('浅色'),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.dark,
+                  icon: Icon(Icons.dark_mode_rounded, size: 18),
+                  label: Text('深色'),
+                ),
+              ],
+              selected: {c.themeMode},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) => c.setThemeMode(s.first),
+              style: SegmentedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutCard() {
+    return Container(
+      decoration: CardDecoration.softOf(context),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
                 Icons.info_rounded,
                 color: AppTheme.accentOrange,
                 size: 22,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 '关于 AirFly',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textDark,
+                  color: AppPalette.of(context).text,
                 ),
               ),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             'AirFly 2.0 · 云中转版\n多端通过云服务端同步剪切板与文件，不再局限于局域网。同一空间码的设备共享剪切板和文件，文件支持断点续传。',
             style: TextStyle(
               fontSize: 14,
-              color: AppTheme.textGrey,
+              color: AppPalette.of(context).sub,
               height: 1.6,
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             '提示：空间码 + 密码就是你们的房间钥匙，别告诉外人。',
-            style: TextStyle(fontSize: 13, color: AppTheme.textDark),
+            style: TextStyle(fontSize: 13, color: AppPalette.of(context).text),
           ),
         ],
       ),

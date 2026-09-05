@@ -53,11 +53,19 @@ class _AirFlyAppState extends State<AirFlyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AirFly',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: HomeScreen(controller: _controller),
+    // 监听控制器：主题模式切换时即时重建 MaterialApp
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'AirFly',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: _controller.themeMode,
+          home: HomeScreen(controller: _controller),
+        );
+      },
     );
   }
 }

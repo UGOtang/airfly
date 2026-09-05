@@ -82,10 +82,10 @@ class _FilesScreenState extends State<FilesScreen> {
     final children = <Widget>[
       Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w700,
-          color: AppTheme.textDark,
+          color: AppPalette.of(context).text,
         ),
       ),
       const Spacer(),
@@ -117,7 +117,7 @@ class _FilesScreenState extends State<FilesScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -126,13 +126,14 @@ class _FilesScreenState extends State<FilesScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.textDark,
+                    color: AppPalette.of(context).text,
                     letterSpacing: -0.5,
                   ),
                 ),
                 Text(
                   '同空间设备共享，支持断点续传',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textGrey),
+                  style: TextStyle(
+                      fontSize: 13, color: AppPalette.of(context).sub),
                 ),
               ],
             ),
@@ -170,21 +171,21 @@ class _FilesScreenState extends State<FilesScreen> {
   Widget _buildEmptyFiles() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: CardDecoration.soft(),
-      child: const Column(
+      decoration: CardDecoration.softOf(context),
+      child: Column(
         children: [
           Icon(
             Icons.cloud_upload_rounded,
             size: 40,
-            color: AppTheme.textLight,
+            color: AppPalette.of(context).faint,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             '云端还没有文件\n点右上「上传」，同空间设备都能下载',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: AppTheme.textGrey,
+              color: AppPalette.of(context).sub,
               height: 1.6,
             ),
           ),
@@ -221,12 +222,12 @@ class _FilesScreenState extends State<FilesScreen> {
         break;
       case TransferState.cancelled:
         status = '已取消';
-        statusColor = AppTheme.textLight;
+        statusColor = AppPalette.of(context).faint;
         break;
     }
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: CardDecoration.soft(),
+      decoration: CardDecoration.softOf(context),
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,10 +247,10 @@ class _FilesScreenState extends State<FilesScreen> {
                   t.fileName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textDark,
+                    color: AppPalette.of(context).text,
                   ),
                 ),
               ),
@@ -292,9 +293,9 @@ class _FilesScreenState extends State<FilesScreen> {
                           : '${CloudFile.formatSize(t.done)} / ${CloudFile.formatSize(t.total)}'),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppTheme.textGrey,
+                    color: AppPalette.of(context).sub,
                   ),
                 ),
               ),
@@ -321,10 +322,10 @@ class _FilesScreenState extends State<FilesScreen> {
                   tooltip: '移除记录',
                   onPressed: () =>
                       widget.controller.dismissTask(t.key),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
                     size: 18,
-                    color: AppTheme.textLight,
+                    color: AppPalette.of(context).faint,
                   ),
                 ),
             ],
@@ -354,7 +355,7 @@ class _FilesScreenState extends State<FilesScreen> {
   Widget _buildFileCard(CloudFile f) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: CardDecoration.soft(),
+      decoration: CardDecoration.softOf(context),
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,18 +372,18 @@ class _FilesScreenState extends State<FilesScreen> {
                       f.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.textDark,
+                        color: AppPalette.of(context).text,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${CloudFile.formatSize(f.size)} · 来自 ${f.ownerDeviceName} · ${_expireLabel(f)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.textGrey,
+                        color: AppPalette.of(context).sub,
                       ),
                     ),
                   ],
@@ -402,9 +403,9 @@ class _FilesScreenState extends State<FilesScreen> {
             const SizedBox(height: 6),
             Text(
               '上传中 ${(f.progress * 100).toStringAsFixed(0)}%（${CloudFile.formatSize(f.uploadedBytes)} / ${CloudFile.formatSize(f.size)}）',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppTheme.textGrey,
+                color: AppPalette.of(context).sub,
               ),
             ),
           ] else ...[
@@ -417,7 +418,7 @@ class _FilesScreenState extends State<FilesScreen> {
                     icon: const Icon(Icons.download_rounded, size: 18),
                     label: const Text('下载'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.deepBlue,
+                      foregroundColor: AppPalette.of(context).strong,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -429,9 +430,9 @@ class _FilesScreenState extends State<FilesScreen> {
                 IconButton(
                   tooltip: '删除云端文件',
                   onPressed: () => _confirmDelete(f),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.delete_outline_rounded,
-                    color: AppTheme.textLight,
+                    color: AppPalette.of(context).faint,
                   ),
                 ),
               ],

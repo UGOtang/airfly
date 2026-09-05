@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -27,6 +28,9 @@ class AppController extends ChangeNotifier {
   String deviceId = '';
   bool autoPushClip = false;
   bool autoPullClip = false;
+
+  /// 外观模式，默认跟随系统。
+  ThemeMode themeMode = ThemeMode.system;
 
   bool isInitialized = false;
   bool _appPaused = false;
@@ -102,6 +106,7 @@ class AppController extends ChangeNotifier {
       }
       autoPushClip = prefs.getBool('af_auto_push') ?? false;
       autoPullClip = prefs.getBool('af_auto_pull') ?? false;
+      themeMode = _parseThemeMode(prefs.getString('af_theme_mode'));
 
       _applyToService();
       service.addListener(_onServiceChanged);
@@ -167,6 +172,37 @@ class AppController extends ChangeNotifier {
       _lastSeenRemoteId ??= latest.id;
     }
     _throttledNotify();
+  }
+
+  static ThemeMode _parseThemeMode(String? raw) {
+    switch (raw) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  static String _themeModeKey(ThemeMode m) {
+    switch (m) {
+      case ThemeMode.light:
+        return 'light';
+      case ThemeMode.dark:
+        return 'dark';
+      case ThemeMode.system:
+        return 'system';
+    }
+  }
+
+  /// 切换外观并持久化，即时生效。
+  Future<void> setThemeMode(ThemeMode m) async {
+    if (themeMode == m) return;
+    themeMode = m;
+    _throttledNotify();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('af_theme_mode', _themeModeKey(m));
   }
 
   static String currentPlatform() {

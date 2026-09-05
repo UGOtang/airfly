@@ -67,12 +67,12 @@ class DevicesScreen extends StatelessWidget {
               builder: (context, _) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     '在线设备',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.textDark,
+                      color: AppPalette.of(context).text,
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -80,9 +80,9 @@ class DevicesScreen extends StatelessWidget {
                     controller.spaceId.isEmpty
                         ? '未加入空间'
                         : '空间 ${controller.spaceId} · ${controller.service.devices.length} 台在线',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.textGrey,
+                      color: AppPalette.of(context).sub,
                     ),
                   ),
                 ],
@@ -128,21 +128,21 @@ class DevicesScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               '尚未连接到云端',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textDark,
+                color: AppPalette.of(context).text,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               '去「设置」填写服务端地址和空间码\n同一空间码的设备会自动在这里相见',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.textGrey,
+                color: AppPalette.of(context).sub,
                 height: 1.5,
               ),
             ),
@@ -179,21 +179,21 @@ class DevicesScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               '空间里只有你',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textDark,
+                color: AppPalette.of(context).text,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               '在其他设备安装 AirFly\n填入相同的服务端地址和空间码即可加入',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.textGrey,
+                color: AppPalette.of(context).sub,
                 height: 1.5,
               ),
             ),
@@ -207,7 +207,8 @@ class DevicesScreen extends StatelessWidget {
     final isMine = device.id == controller.deviceId;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: CardDecoration.soft(
+      decoration: CardDecoration.softOf(
+        context,
         borderColor: isMine
             ? AppTheme.primaryBlue.withValues(alpha: 0.4)
             : null,
@@ -229,10 +230,10 @@ class DevicesScreen extends StatelessWidget {
                           device.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.textDark,
+                            color: AppPalette.of(context).text,
                           ),
                         ),
                       ),
@@ -249,12 +250,12 @@ class DevicesScreen extends StatelessWidget {
                             ),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
+                          child: Text(
                             '本机',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.deepBlue,
+                              color: AppPalette.of(context).strong,
                             ),
                           ),
                         ),
@@ -283,9 +284,9 @@ class DevicesScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Text(
                         device.platformLabel,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.textGrey,
+                          color: AppPalette.of(context).sub,
                         ),
                       ),
                     ],
