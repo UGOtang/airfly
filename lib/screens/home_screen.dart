@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/app_controller.dart';
-import '../models/transfer_item.dart';
+import '../services/cloud_service.dart';
 import '../theme/app_theme.dart';
+import 'clipboard_screen.dart';
 import 'devices_screen.dart';
+import 'files_screen.dart';
 import 'settings_screen.dart';
-import 'transfers_screen.dart';
 
-/// 主页面 - 包含设备发现、传输记录、设置三个标签页
+/// 主页面：剪切板 / 文件 / 设备 / 设置 + 顶部连接状态条。
 class HomeScreen extends StatefulWidget {
   final AppController controller;
 
@@ -21,46 +22,27 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_handleControllerChange);
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_handleControllerChange);
-    super.dispose();
-  }
-
-  /// 监听控制器变化，处理文件请求对话框
-  void _handleControllerChange() {
-    final pending = widget.controller.pendingRequest;
-    if (pending != null && !widget.controller.isDialogShowing) {
-      widget.controller.markDialogShown();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _showFileRequestDialog(pending);
-        }
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final pages = [
+      ClipboardScreen(controller: widget.controller),
+      FilesScreen(controller: widget.controller),
       DevicesScreen(controller: widget.controller),
-      TransfersScreen(controller: widget.controller),
       SettingsScreen(controller: widget.controller),
     ];
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.bgGradient,
-        ),
-        child: IndexedStack(
-          index: _currentIndex,
-          children: pages,
+        decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              _StatusBar(controller: widget.controller),
+              Expanded(
+                child: IndexedStack(index: _currentIndex, children: pages),
+              ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: Container(
@@ -76,130 +58,34 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(
-                  icon: Icons.radar_rounded,
-                  label: '发现',
+                  icon: Icons.content_paste_rounded,
+                  label: '剪切板',
                   index: 0,
                 ),
                 _buildNavItem(
-                  icon: Icons.swap_horiz_rounded,
-                  label: '传输',
+                  icon: Icons.folder_rounded,
+                  label: '文件',
                   index: 1,
+                ),
+                _buildNavItem(
+                  icon: Icons.devices_rounded,
+                  label: '设备',
+                  index: 2,
                 ),
                 _buildNavItem(
                   icon: Icons.settings_rounded,
                   label: '设置',
-                  index: 2,
+                  index: 3,
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  /// 显示文件接收请求对话框
-  void _showFileRequestDialog(TransferItem item) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(
-              Icons.mark_email_unread_rounded,
-              color: AppTheme.primaryBlue,
-            ),
-            SizedBox(width: 8),
-            Text('收到文件请求'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${item.peerName} 想要发送文件给你',
-              style: const TextStyle(
-                fontSize: 15,
-                color: AppTheme.textDark,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.insert_drive_file_rounded,
-                    color: AppTheme.primaryBlue,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.fileName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textDark,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          TransferItem.formatSize(item.fileSize),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textGrey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              widget.controller.rejectFileRequest();
-              Navigator.pop(context);
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.textGrey,
-            ),
-            child: const Text('拒绝'),
-          ),
-          FilledButton(
-            onPressed: () {
-              widget.controller.acceptFileRequest();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('已接受文件请求'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-            child: const Text('接受'),
-          ),
-        ],
       ),
     );
   }
@@ -215,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryBlue.withValues(alpha: 0.15)
@@ -242,6 +128,104 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 顶部连接状态条：点按可重连。
+class _StatusBar extends StatelessWidget {
+  final AppController controller;
+
+  const _StatusBar({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final svc = controller.service;
+        final Color dot;
+        final String text;
+        switch (svc.state) {
+          case ConnState.connected:
+            dot = const Color(0xFF4CAF50);
+            text = '已连接 · ${controller.spaceId}';
+            break;
+          case ConnState.connecting:
+            dot = AppTheme.accentOrange;
+            text = '连接中…';
+            break;
+          case ConnState.disconnected:
+            dot = const Color(0xFFF44336);
+            final err = svc.lastErrorMessage ??
+                (svc.lastErrorCode != null
+                    ? '(${svc.lastErrorCode})'
+                    : '');
+            text = controller.serverUrl.isEmpty || controller.spaceId.isEmpty
+                ? '未配置服务端，去「设置」填写'
+                : '未连接 $err · 点按重连';
+            break;
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                if (svc.state != ConnState.connecting) {
+                  controller.connect();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('正在连接…'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration:
+                          BoxDecoration(color: dot, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textGrey,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      controller.deviceName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textGrey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,0 +1,7 @@
+name: airfly_server
+description: AirFly cloud relay server (pure Dart, zero third-party deps).
+publish_to: none
+version: 1.0.0
+
+environment:
+  sdk: ^3.12.0

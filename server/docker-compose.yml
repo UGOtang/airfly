@@ -1,0 +1,19 @@
+services:
+  airfly-relay:
+    build: .
+    image: airfly-relay:1.0.0
+    container_name: airfly-relay
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/srv/airfly/data
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8080
+      DATA_DIR: /srv/airfly/data
+      MAX_FILE_MB: 2048
+      SPACE_QUOTA_MB: 5120
+      FILE_TTL_HOURS: 168
+      # API_KEY: change-me  # 全局密钥，启用后客户端必须填一致
+      # MAX_CLIP_CHARS: 100000

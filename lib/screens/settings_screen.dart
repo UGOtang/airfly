@@ -1,9 +1,13 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../controllers/app_controller.dart';
+import '../core/protocol.dart';
+import '../services/cloud_service.dart';
 import '../theme/app_theme.dart';
 
-/// 设置页面
+/// 设置页：服务端地址 / 空间码 / 密码 / 设备名。
 class SettingsScreen extends StatefulWidget {
   final AppController controller;
 
@@ -14,45 +18,60 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final TextEditingController _nameController = TextEditingController();
+  late final TextEditingController _server;
+  late final TextEditingController _space;
+  late final TextEditingController _spaceKey;
+  late final TextEditingController _apiKey;
+  late final TextEditingController _name;
+  bool _saving = false;
+  bool _obscureKey = true;
 
   @override
   void initState() {
     super.initState();
-    _nameController.text = '我的设备';
+    final c = widget.controller;
+    _server = TextEditingController(text: c.serverUrl);
+    _space = TextEditingController(text: c.spaceId);
+    _spaceKey = TextEditingController(text: c.spaceKey);
+    _apiKey = TextEditingController(text: c.apiKey);
+    _name = TextEditingController(text: c.deviceName);
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _server.dispose();
+    _space.dispose();
+    _spaceKey.dispose();
+    _apiKey.dispose();
+    _name.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: ListView(
+    return Column(
+      children: [
+        _buildHeader(),
+        Expanded(
+          child: AnimatedBuilder(
+            animation: widget.controller,
+            builder: (context, _) => ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               children: [
-                _buildDeviceNameCard(),
+                _buildConnCard(),
                 const SizedBox(height: 12),
                 _buildAboutCard(),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// 顶部标题栏
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
       child: Row(
         children: [
           Container(
@@ -86,11 +105,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               Text(
-                '个性化你的 AirFly',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.textGrey,
-                ),
+                '连接你的云端空间',
+                style: TextStyle(fontSize: 13, color: AppTheme.textGrey),
               ),
             ],
           ),
@@ -99,48 +115,116 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// 设备名称设置卡片
-  Widget _buildDeviceNameCard() {
+  Widget _buildConnCard() {
+    final c = widget.controller;
     return Container(
       decoration: CardDecoration.soft(),
       padding: const EdgeInsets.all(20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
+          _connStateRow(c),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _server,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: '服务端地址',
+              hintText: 'ws://你的云服务器IP:8080/ws',
+              prefixIcon: Icon(Icons.dns_rounded),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
             children: [
-              Icon(
-                Icons.badge_rounded,
-                color: AppTheme.primaryBlue,
-                size: 22,
-              ),
-              SizedBox(width: 8),
-              Text(
-                '设备名称',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textDark,
+              Expanded(
+                child: TextField(
+                  controller: _space,
+                  decoration: const InputDecoration(
+                    labelText: '空间码',
+                    hintText: '如 my-space',
+                    prefixIcon: Icon(Icons.meeting_room_rounded),
+                  ),
                 ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () {
+                  _space.text = _randomSpace();
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text('随机'),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(
-              hintText: '输入设备名称',
-              prefixIcon: Icon(Icons.devices_rounded),
+            controller: _spaceKey,
+            obscureText: _obscureKey,
+            decoration: InputDecoration(
+              labelText: '空间密码（可选）',
+              hintText: '首次加入即创建，之后须一致',
+              prefixIcon: const Icon(Icons.lock_outline_rounded),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureKey
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                ),
+                onPressed: () =>
+                    setState(() => _obscureKey = !_obscureKey),
+              ),
             ),
-            onSubmitted: _saveDeviceName,
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => _saveDeviceName(_nameController.text),
-              icon: const Icon(Icons.save_rounded),
-              label: const Text('保存名称'),
+          TextField(
+            controller: _apiKey,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: '服务端密钥（可选）',
+              hintText: '与服务端 API_KEY 一致',
+              prefixIcon: Icon(Icons.key_rounded),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _name,
+            decoration: const InputDecoration(
+              labelText: '本机显示名称',
+              prefixIcon: Icon(Icons.badge_rounded),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _saving ? null : _save,
+            icon: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_rounded),
+            label: const Text('保存并重连'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => c.disconnect(),
+            icon: const Icon(Icons.link_off_rounded),
+            label: const Text('断开连接'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.textGrey,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
         ],
@@ -148,39 +232,140 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// 保存设备名称
-  Future<void> _saveDeviceName(String name) async {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) {
+  Widget _connStateRow(AppController c) {
+    final svc = c.service;
+    final Color color;
+    final String label;
+    switch (svc.state) {
+      case ConnState.connected:
+        color = const Color(0xFF4CAF50);
+        label = '已连接 · ${svc.devices.length} 台在线';
+        break;
+      case ConnState.connecting:
+        color = AppTheme.accentOrange;
+        label = '连接中…';
+        break;
+      case ConnState.disconnected:
+        color = const Color(0xFFF44336);
+        label = '未连接';
+        break;
+    }
+    String? err;
+    if (svc.lastErrorCode != null) {
+      err = svc.lastErrorMessage ?? friendlyError(svc.lastErrorCode!);
+    }
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+                if (err != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    err,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textGrey,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _randomSpace() {
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+    final r = Random.secure();
+    return List.generate(6, (_) => chars[r.nextInt(chars.length)]).join();
+  }
+
+  Future<void> _save() async {
+    final server = _server.text.trim();
+    final space = _space.text.trim();
+    if (server.isEmpty || space.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('设备名称不能为空'),
+          content: Text('服务端地址和空间码都要填'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
-
-    await widget.controller.setDeviceName(trimmed);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('设备名称已更新'),
-        duration: Duration(seconds: 1),
-      ),
-    );
+    if (normalizeServerUrl(server) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('服务端地址格式不对，如 ws://1.2.3.4:8080/ws'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (!isValidSpaceId(space)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('空间码格式不对（3-32位字母数字及 -_）'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await widget.controller.saveSettings(
+        serverUrl: server,
+        spaceId: space,
+        spaceKey: _spaceKey.text,
+        apiKey: _apiKey.text.trim(),
+        deviceName: _name.text,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('已保存，正在重连…'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
-  /// 关于卡片
   Widget _buildAboutCard() {
     return Container(
       decoration: CardDecoration.soft(),
       padding: const EdgeInsets.all(20),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(
                 Icons.info_rounded,
@@ -198,80 +383,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.cardGradient,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.air_rounded,
-                  color: Colors.white,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'AirFly',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textDark,
-                    ),
-                  ),
-                  Text(
-                    '版本 1.0.0',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textGrey,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            '轻巧优雅的局域网文件传输工具\n无需互联网，无需账号，即开即用',
+          SizedBox(height: 12),
+          Text(
+            'AirFly 2.0 · 云中转版\n多端通过云服务端同步剪切板与文件，不再局限于局域网。同一空间码的设备共享剪切板和文件，文件支持断点续传。',
             style: TextStyle(
               fontSize: 14,
               color: AppTheme.textGrey,
               height: 1.6,
             ),
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.lightbulb_rounded,
-                  color: AppTheme.primaryBlue,
-                  size: 20,
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '提示：请确保两台设备连接到同一个 Wi-Fi 网络',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textDark,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          SizedBox(height: 12),
+          Text(
+            '提示：空间码 + 密码就是你们的房间钥匙，别告诉外人。',
+            style: TextStyle(fontSize: 13, color: AppTheme.textDark),
           ),
         ],
       ),
