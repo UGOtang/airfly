@@ -9,7 +9,9 @@ void main() {
   testWidgets('深色模式下四个页签均可正常构建', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({'af_theme_mode': 'dark'});
     final controller = AppController();
-    await controller.initialize();
+    // initialize() 含真 IO（终端初始目录探测），必须包在 runAsync 里，
+    // 否则 FakeAsync 下永远等不到 IO 完成。
+    await tester.runAsync(() => controller.initialize());
     expect(controller.themeMode, ThemeMode.dark);
 
     await tester.pumpWidget(
@@ -26,11 +28,14 @@ void main() {
     final context = tester.element(find.text('剪切板'));
     expect(AppPalette.of(context).isDark, isTrue);
 
-    // 逐一切页，把四个页面的深色分支都构建出来
+    // 逐一切页，把页面的深色分支都构建出来
     expect(find.text('共享剪切板'), findsOneWidget);
     await tester.tap(find.text('文件'));
     await tester.pump();
     expect(find.text('云端文件'), findsOneWidget);
+    await tester.tap(find.text('终端'));
+    await tester.pump();
+    expect(find.text('本地终端'), findsOneWidget);
     await tester.tap(find.text('设备'));
     await tester.pump();
     await tester.tap(find.text('设置'));
@@ -48,7 +53,7 @@ void main() {
   testWidgets('主题切换即时生效并持久化', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     final controller = AppController();
-    await controller.initialize();
+    await tester.runAsync(() => controller.initialize());
     expect(controller.themeMode, ThemeMode.system);
 
     await controller.setThemeMode(ThemeMode.dark);
@@ -59,7 +64,7 @@ void main() {
     // 非法存量值回退到跟随系统，不崩
     await prefs.setString('af_theme_mode', 'nope');
     final again = AppController();
-    await again.initialize();
+    await tester.runAsync(() => again.initialize());
     expect(again.themeMode, ThemeMode.system);
 
     controller.dispose();

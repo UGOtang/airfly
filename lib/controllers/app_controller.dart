@@ -12,11 +12,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/chunk_io.dart';
+import '../core/term_session.dart';
 import '../models/cloud_file.dart';
 import '../services/cloud_service.dart';
 
 class AppController extends ChangeNotifier {
   final CloudService service = CloudService();
+
+  /// 本地终端会话（UI 直接监听它）。
+  late final TermSession terminal = TermSession();
   final _uuid = const Uuid();
 
   // ---------------- 设置（持久化）
@@ -117,6 +121,8 @@ class AppController extends ChangeNotifier {
         const Duration(seconds: 2),
         (_) => _pollClipboard(),
       );
+
+      await terminal.init();
 
       // 配好地址和空间码则自动连接
       if (serverUrl.trim().isNotEmpty && spaceId.trim().isNotEmpty) {
@@ -685,6 +691,7 @@ class AppController extends ChangeNotifier {
     _notifyTimer?.cancel();
     service.removeListener(_onServiceChanged);
     service.dispose();
+    terminal.dispose();
     super.dispose();
   }
 }

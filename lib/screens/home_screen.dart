@@ -8,6 +8,7 @@ import 'clipboard_screen.dart';
 import 'devices_screen.dart';
 import 'files_screen.dart';
 import 'settings_screen.dart';
+import 'terminal_screen.dart';
 
 /// 主页面：剪切板 / 文件 / 设备 / 设置 + 顶部连接状态条。
 class HomeScreen extends StatefulWidget {
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final pages = [
       ClipboardScreen(controller: widget.controller),
       FilesScreen(controller: widget.controller),
+      TerminalScreen(controller: widget.controller),
       DevicesScreen(controller: widget.controller),
       SettingsScreen(controller: widget.controller),
     ];
@@ -80,14 +82,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   index: 1,
                 ),
                 _buildNavItem(
+                  icon: Icons.terminal_rounded,
+                  label: '终端',
+                  index: 2,
+                ),
+                _buildNavItem(
                   icon: Icons.devices_rounded,
                   label: '设备',
-                  index: 2,
+                  index: 3,
                 ),
                 _buildNavItem(
                   icon: Icons.settings_rounded,
                   label: '设置',
-                  index: 3,
+                  index: 4,
                 ),
               ],
             ),
@@ -109,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryBlue.withValues(alpha: 0.15)
