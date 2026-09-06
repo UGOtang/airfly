@@ -150,4 +150,11 @@ class TransferTask {
     if (total <= 0) return 0;
     return (done / total).clamp(0.0, 1.0);
   }
+
+  /// 是否可一键打开：已完成的下载且本地路径有效。
+  /// 上传任务不开放（源文件可能已被用户移走，且语义是“发送”）。
+  bool get canOpen =>
+      !isUpload &&
+      state == TransferState.done &&
+      (savedPath?.isNotEmpty ?? false);
 }

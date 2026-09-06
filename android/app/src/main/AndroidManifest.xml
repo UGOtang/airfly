@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 云中转 WebSocket 联网必需（release 包只认 main 清单） -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 下载的 APK 点一下调起安装，Android 8+ 必需；
+         注意：上架 Google Play 前必须删掉它（政策不允许），自用分发保留 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="airfly"
         android:name="${applicationName}"

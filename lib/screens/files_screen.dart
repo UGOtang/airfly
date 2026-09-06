@@ -20,6 +20,9 @@ class FilesScreen extends StatefulWidget {
 class _FilesScreenState extends State<FilesScreen> {
   bool _picking = false;
 
+  /// 正在调起系统打开的任务 key（防连点打出多个 intent）
+  final Set<String> _opening = {};
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -226,10 +229,13 @@ class _FilesScreenState extends State<FilesScreen> {
         statusColor = AppPalette.of(context).faint;
         break;
     }
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: CardDecoration.softOf(context),
-      padding: const EdgeInsets.all(14),
+    return GestureDetector(
+      // 点已完成的下载卡片 = 快捷打开（APK 调安装，其余走默认应用）
+      onTap: (t.canOpen && !kIsWeb) ? () => _openTask(t) : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: CardDecoration.softOf(context),
+        padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -329,9 +335,47 @@ class _FilesScreenState extends State<FilesScreen> {
                 ),
             ],
           ),
+          if (t.state == TransferState.done &&
+              t.canOpen &&
+              !kIsWeb) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FButton(
+                variant: .outline,
+                onPress: _opening.contains(t.key)
+                    ? null
+                    : () => _openTask(t),
+                child: _opening.contains(t.key)
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child:
+                            CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('打开'),
+              ),
+            ),
+          ],
         ],
       ),
-    );
+    ));
+  }
+
+  /// 调起系统打开（防连点、防重复 intent）。
+  Future<void> _openTask(TransferTask t) async {
+    if (_opening.contains(t.key)) return;
+    setState(() => _opening.add(t.key));
+    try {
+      await widget.controller.openDownload(t.key);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _opening.remove(t.key));
+    }
   }
 
   Future<void> _retryTask(TransferTask t) async {

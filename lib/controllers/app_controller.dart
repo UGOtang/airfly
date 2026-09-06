@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/services.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -665,6 +666,34 @@ class AppController extends ChangeNotifier {
     }
     _tasks.remove(key);
     await startDownload(match.first);
+  }
+
+  /// 一键打开已下载完成的文件：APK 调起安装，其余走系统默认应用。
+  /// 抛友好中文错误，由页面 snackbar 展示。
+  Future<void> openDownload(String key) async {
+    final task = _tasks[key];
+    if (task == null) throw '任务不存在';
+    if (kIsWeb) throw 'Web 端文件已通过浏览器下载，请在浏览器下载记录中打开';
+    if (!task.canOpen) throw '该任务暂无可打开的本地文件';
+    final path = task.savedPath!;
+    try {
+      final result = await OpenFilex.open(path);
+      switch (result.type) {
+        case ResultType.done:
+          return;
+        case ResultType.fileNotFound:
+          throw '文件不存在或已被删除';
+        case ResultType.noAppToOpen:
+          throw '没有可打开此文件的应用';
+        case ResultType.permissionDenied:
+          throw '系统拒绝了打开请求（安装 APK 请先允许“安装未知应用”）';
+        case ResultType.error:
+          throw result.message.isEmpty ? '打开失败' : result.message;
+      }
+    } catch (e) {
+      if (e is String) rethrow;
+      throw '打开失败：$e';
+    }
   }
 
   Future<void> deleteCloudFile(String fileId) async {

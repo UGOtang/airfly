@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 供 open_filex 分享下载文件给系统应用（含 APK 安装）。
+     open_filex 自带 provider 声明（自动合并），这里只提供路径表。 -->
+<paths>
+    <external-path name="external_files" path="." />
+    <external-files-path name="external_app_files" path="." />
+    <files-path name="files" path="." />
+    <cache-path name="cache" path="." />
+</paths>
