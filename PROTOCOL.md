@@ -52,6 +52,7 @@
 `empty_clip|clip_too_large|bad_file_id|bad_file_size|file_conflict|quota_exceeded|`
 `no_such_file|file_incomplete|empty_chunk|bad_base64|bad_chunk_size|chunk_overflow|`
 `size_mismatch|bad_offset|disk_error|frame_too_large|rate_limited|unknown_type|internal`
+`space_limit`（空间总数超限，拒绝新建空间）
 
 ## 约束
 

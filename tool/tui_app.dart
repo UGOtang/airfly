@@ -446,7 +446,7 @@ class TuiApp {
     if (s.focus != TuiPanel.files || s.fileSel >= client.files.length) return;
     final f = client.files[s.fileSel];
     s.confirm = ConfirmReq(
-      text: '删除云端文件「${ellipsis(f.name, 30)}」？ [y/n]',
+      text: '删除云端文件「${ellipsis(sanitizeCell(f.name), 30)}」？ [y/n]',
       submit: (yes) {
         if (!yes) {
           s.log('已取消删除');
@@ -552,6 +552,8 @@ class TuiApp {
           fileId: fileId, fileName: name, fileSize: size);
       var offset = meta.uploadedBytes.clamp(0, size);
       s.upProgress[fileId] = size == 0 ? 1 : offset / size;
+      // 停滞计数：与 Flutter 端同理，防故障/恶意服务端无限续传空转
+      var stagnant = 0;
       final raf = await file.open(mode: FileMode.read);
       try {
         while (offset < size) {
@@ -573,7 +575,15 @@ class TuiApp {
           );
           if (up < 0) throw StateError('意外的服务端响应');
           // 无论是否 mismatch，一律以服务端回的偏移为准继续
-          offset = up.clamp(0, size);
+          final next = up.clamp(0, size);
+          if (next <= offset) {
+            if (++stagnant > 10) {
+              throw RetryableError('服务端长时间无进展，已中断（可重试）');
+            }
+          } else {
+            stagnant = 0;
+          }
+          offset = next;
           s.upProgress[fileId] = offset / size;
           if (complete) break;
         }
@@ -615,7 +625,7 @@ class TuiApp {
     try {
       final dir = Directory('airfly-downloads');
       await dir.create(recursive: true);
-      final target = await _uniqueFile(dir.path, f.name);
+      final target = await _uniqueFile(dir.path, safeFileName(f.name));
       final raf = await target.open(mode: FileMode.write);
       var offset = 0;
       try {
@@ -738,8 +748,9 @@ class TuiApp {
     final ok = c.connected;
     final dot =
         ok ? '${Ansi.fg(theme.good)}●${Ansi.reset}' : '${Ansi.fg(theme.bad)}◌${Ansi.reset}';
+    final space = sanitizeCell(c.spaceId);
     final left =
-        ' ${Ansi.bold}AirFly TUI${Ansi.reset} ${Ansi.fg(theme.dim)}${ellipsis(c.spaceId, 20)} $dot${ok ? '已连接' : '未连接'}${Ansi.reset}';
+        ' ${Ansi.bold}AirFly TUI${Ansi.reset} ${Ansi.fg(theme.dim)}${ellipsis(space, 20)} $dot${ok ? '已连接' : '未连接'}${Ansi.reset}';
     final right =
         '${Ansi.fg(theme.dim)}${c.devices.length}设备 ${c.files.length}文件 ${_clock()}${Ansi.reset} ';
     final lw = cellWidth(stripAnsi(left));
@@ -758,9 +769,10 @@ class TuiApp {
     final out = <String>[];
     for (final d in client.devices) {
       final mine = d.id == client.deviceId;
+      final name = sanitizeCell(d.name);
       out.add(
           '${mine ? Ansi.fg(theme.accent) : Ansi.fg(theme.good)}●${Ansi.reset} '
-          '${ellipsis(d.name, innerW - 12)}${mine ? ' (本机)' : ''}');
+          '${ellipsis(name, innerW - 12)}${mine ? ' (本机)' : ''}');
     }
     if (out.isEmpty) out.add('${Ansi.fg(theme.dim)}（暂无在线设备）${Ansi.reset}');
     return out;
@@ -787,7 +799,8 @@ class TuiApp {
         tag = formatSize(f.size);
       }
       final nameW = max(4, innerW - cellWidth(tag) - (bar.isEmpty ? 1 : 13));
-      out.add('${ellipsis(f.name, nameW)}${bar.isEmpty ? ' ' : ' $bar '}$tag');
+      out.add(
+          '${ellipsis(sanitizeCell(f.name), nameW)}${bar.isEmpty ? ' ' : ' $bar '}$tag');
     }
     if (out.isEmpty) out.add('${Ansi.fg(theme.dim)}（云端暂无文件，按 u 上传）${Ansi.reset}');
     return out;
@@ -799,9 +812,10 @@ class TuiApp {
   List<String> _clipRows(int innerW) {
     final out = <String>[];
     for (final c in client.clipHistory) {
-      final preview = c.text.replaceAll('\n', ' ');
+      final preview = sanitizeCell(c.text).replaceAll('\n', ' ');
+      final who = sanitizeCell(c.deviceName);
       out.add(
-          '${Ansi.fg(theme.dim)}${ellipsis(c.deviceName, 10)} ${ago(c.updatedAt)}${Ansi.reset} '
+          '${Ansi.fg(theme.dim)}${ellipsis(who, 10)} ${ago(c.updatedAt)}${Ansi.reset} '
           '${ellipsis(preview, max(4, innerW - 16))}');
     }
     if (out.isEmpty) out.add('${Ansi.fg(theme.dim)}（暂无同步记录，按 p 推送）${Ansi.reset}');
@@ -889,7 +903,7 @@ class TuiApp {
   String _footer(int w, int h, List<ClickRegion> clicks, int y) {
     final b = StringBuffer();
     final logColor = state.logErr ? theme.bad : theme.dim;
-    final logLine = padCells(ellipsis(state.logMsg, w), w);
+    final logLine = padCells(ellipsis(sanitizeCell(state.logMsg), w), w);
     b.writeln('${Ansi.fg(logColor)}$logLine${Ansi.reset}');
     y++;
     if (state.input != null) {
@@ -922,39 +936,43 @@ class TuiApp {
     final label = '${input.title}：';
     final labelW = cellWidth(label);
     final fieldW = max(4, w - labelW - 1);
-    // 光标前后按列宽切出可见窗口
-    final before = String.fromCharCodes(
-        input.runes.sublist(0, input.cursor.clamp(0, input.runes.length)));
-    final after = String.fromCharCodes(
-        input.runes.sublist(input.cursor.clamp(0, input.runes.length)));
+    // 显示用清洗串（粘贴进来的 ANSI 不能上屏），光标位置按清洗后重算，
+    // 最坏只是偏移几个字符，不会崩也不会执行转义。
+    String disp(List<int> runes) => sanitizeCell(String.fromCharCodes(runes));
+    final before = disp(input.runes.sublist(0, input.cursor.clamp(0, input.runes.length)));
+    final after = disp(input.runes.sublist(input.cursor.clamp(0, input.runes.length)));
     var visible = before + after;
     if (cellWidth(visible) > fieldW) {
       // 保留光标可见：从光标处往左截
-      final all = input.runes;
-      var start = input.cursor;
+      final clean = sanitizeCell(String.fromCharCodes(input.runes));
+      final cleanRunes = clean.runes.toList();
+      var cursor = input.cursor.clamp(0, cleanRunes.length);
+      var start = cursor;
       var ww = 0;
       while (start > 0) {
-        final cw = cellWidthOf(all[start - 1]);
+        final cw = cellWidthOf(cleanRunes[start - 1]);
         if (ww + cw > fieldW - 2) break;
         ww += cw;
         start--;
       }
       visible =
-          '…${String.fromCharCodes(all.sublist(start, input.cursor))}$after';
+          '…${String.fromCharCodes(cleanRunes.sublist(start, cursor))}'
+          '${String.fromCharCodes(cleanRunes.sublist(cursor))}';
       if (cellWidth(visible) > fieldW) {
         visible = ellipsis(visible, fieldW);
       }
       return '$label$visible';
     }
-    // 光标块：反白光标处字符（末尾则反白空格）
-    final cursorChar =
-        input.cursor < input.runes.length
-            ? String.fromCharCodes([input.runes[input.cursor]])
-            : ' ';
+    // 光标块：反白光标处字符（末尾则反白空格），一律清洗防 ANSI 注入
+    final rawCursor = input.cursor < input.runes.length
+        ? String.fromCharCodes([input.runes[input.cursor]])
+        : ' ';
+    final cleanCursor = sanitizeCell(rawCursor);
+    final cursorChar = cleanCursor.isEmpty ? ' ' : cleanCursor;
     final cursorW = cellWidth(cursorChar);
     final tail = input.cursor < input.runes.length
-        ? String.fromCharCodes(
-            input.runes.sublist(input.cursor + 1))
+        ? sanitizeCell(String.fromCharCodes(
+            input.runes.sublist(input.cursor + 1)))
         : '';
     final shown =
         '$before${Ansi.reverse}$cursorChar${Ansi.reset}$tail';
@@ -1015,6 +1033,18 @@ String _basename(String path) {
   var name = path.replaceAll('\\', '/');
   if (name.contains('/')) name = name.split('/').last;
   return name.isEmpty ? 'unnamed' : name;
+}
+
+/// 下载落盘前的文件名清洗：防恶意服务端用 ../../ 穿目录、控制字符捣乱。
+/// （服务端也会洗，这是客户端第二道锁。）
+String safeFileName(String raw) {
+  var name = sanitizeCell(raw).replaceAll('\\', '/');
+  if (name.contains('/')) name = name.split('/').last;
+  name = name.trim().replaceAll(RegExp(r'^\.+'), '');
+  if (name.isEmpty) name = 'unnamed';
+  if (name.length > 180) name = name.substring(0, 180);
+  if (name == '.' || name == '..') name = 'unnamed';
+  return name;
 }
 
 String _newFileId() {

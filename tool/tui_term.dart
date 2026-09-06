@@ -88,6 +88,20 @@ final RegExp _ansiOsc = RegExp('\x1B\\][^\x07\x1B]*(?:\x07|\x1B\\\\)');
 String stripAnsi(String s) =>
     s.replaceAll(_ansiOsc, '').replaceAll(_ansiCsi, '');
 
+/// 上屏前清洗不可信文本（远端设备名/文件名/剪切板/日志）：剥 ANSI、
+/// 换行与控制字符转空格。防 ANSI 注入（清屏、移光标、伪造确认框等）。
+String sanitizeCell(String s) {
+  final buf = StringBuffer();
+  for (final cp in stripAnsi(s).runes) {
+    if (cp < 0x20 || cp == 0x7F) {
+      buf.write(' ');
+    } else {
+      buf.writeCharCode(cp);
+    }
+  }
+  return buf.toString();
+}
+
 class Ansi {
   static const reset = '\x1B[0m';
   static const bold = '\x1B[1m';

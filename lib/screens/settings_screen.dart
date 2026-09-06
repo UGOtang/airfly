@@ -410,7 +410,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: Text('深色'),
                 ),
               ],
-              selected: {c.themeMode},
+              selected: {c.themeMode.value},
               showSelectedIcon: false,
               onSelectionChanged: (s) => c.setThemeMode(s.first),
               style: SegmentedButton.styleFrom(

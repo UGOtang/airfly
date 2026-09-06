@@ -32,6 +32,7 @@ void _usage() {
   stdout.writeln('  --api 密钥     服务端 API_KEY，也可用 AIRFLY_API');
   stdout.writeln('  --no-mouse     禁用鼠标（只用键盘）');
   stdout.writeln('  --help         显示本帮助');
+  stdout.writeln('注：--key/--api 经命令行传入可能被本机其他用户看到，敏感环境请用环境变量。');
   stdout.writeln('');
   stdout.writeln('键盘：Tab切换面板 ↑↓/jk选择 Enter动作 p推送 u上传 d下载 x删除');
   stdout.writeln('      c取消传输 v复制 r刷新 ?帮助 q退出（鼠标点选/滚轮同样可用）');

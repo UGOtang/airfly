@@ -40,6 +40,7 @@ class ServerConfig {
   final Duration fileTtl;
   final String apiKey;
   final int maxClipChars;
+  final int maxSpaces;
 
   const ServerConfig({
     required this.host,
@@ -50,6 +51,7 @@ class ServerConfig {
     required this.fileTtl,
     required this.apiKey,
     required this.maxClipChars,
+    required this.maxSpaces,
   });
 
   static int _envInt(String key, int fallback) {
@@ -70,6 +72,7 @@ class ServerConfig {
       fileTtl: Duration(hours: _envInt('FILE_TTL_HOURS', 168)),
       apiKey: Platform.environment['API_KEY'] ?? '',
       maxClipChars: _envInt('MAX_CLIP_CHARS', 100000),
+      maxSpaces: _envInt('MAX_SPACES', 1000),
     );
   }
 }
@@ -78,8 +81,10 @@ class ServerConfig {
 
 void log(String msg) {
   final ts = DateTime.now().toIso8601String();
+  // 去掉换行：设备名等外部输入会进日志，防日志伪造（log forging）
+  final safe = msg.replaceAll(RegExp(r'[\r\n]'), ' ');
   // ignore: avoid_print
-  print('[$ts] $msg');
+  print('[$ts] $safe');
 }
 
 String newId() {
@@ -689,6 +694,11 @@ class RelayServer {
 
     var space = _spaces[spaceId];
     if (space == null) {
+      // 空间总数上限：防止匿名批量建空间耗尽内存/磁盘索引
+      if (_spaces.length >= cfg.maxSpaces) {
+        _send(conn, {'type': 'error', 'code': 'space_limit'});
+        return;
+      }
       space = Space(id: spaceId, key: spaceKey);
       _spaces[spaceId] = space;
       space.saveNow(_persistSpace);

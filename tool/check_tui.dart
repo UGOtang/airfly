@@ -215,6 +215,39 @@ void main() {
     check(app.wantQuit, 'q 退出');
   }
 
+  // ---- 安全清洗：ANSI 注入与路径穿越
+  {
+    check(sanitizeCell('\x1B[2J清屏\x1B[0m') == '清屏', '剥 ANSI 转义');
+    check(sanitizeCell('a\r\nb\x00c\x7fd') == 'a  b c d', '控制字符转空格');
+    check(
+        safeFileName('../../etc/passwd') == 'passwd', '正斜杠穿越拦截');
+    check(safeFileName('..\\win\\sys') == 'sys', '反斜杠穿越拦截');
+    check(safeFileName('...') == 'unnamed', '点名兜底');
+    check(safeFileName('') == 'unnamed', '空名兜底');
+    final app = TuiApp(_dummy());
+    _fabricate(app.client);
+    app.client.files = [
+      RelayFile(
+        id: 'evil',
+        name: '\x1B[2J伪造清屏\n换行../x',
+        size: 10,
+        uploadedBytes: 10,
+        complete: true,
+        ownerDeviceId: 'devM',
+        ownerDeviceName: '\x1B[7m伪装设备',
+        createdAt: DateTime.now(),
+        expiresAt: DateTime.now().add(const Duration(days: 1)),
+      ),
+    ];
+    final f = app.render(100, 30);
+    // 帧首的清屏转义是合法的（恰好 1 次），注入的那条必须被洗掉
+    final clears = '\x1B[2J'.allMatches(f.text).length;
+    check(clears == 1, '注入转义不进帧（清屏仅帧首 1 次）');
+    check(f.text.contains('伪造清屏'), '注入文本内容保留可读部分');
+    final lines = _visualLines(f.text);
+    check(lines.every((l) => cellWidth(l) <= 100), '注入行不超宽');
+  }
+
   print(_failures == 0 ? 'ALL PASS' : 'FAILURES: $_failures');
   if (_failures != 0) throw StateError('fail');
 }

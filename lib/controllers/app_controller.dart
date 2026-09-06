@@ -34,7 +34,10 @@ class AppController extends ChangeNotifier {
   bool autoPullClip = false;
 
   /// 外观模式，默认跟随系统。
-  ThemeMode themeMode = ThemeMode.system;
+  /// 用独立 ValueNotifier 持有：main 只监听它，避免传输进度每 100ms
+  /// 的通知把整个 MaterialApp 重建一遍。
+  final ValueNotifier<ThemeMode> themeMode =
+      ValueNotifier(ThemeMode.system);
 
   bool isInitialized = false;
   bool _appPaused = false;
@@ -110,7 +113,7 @@ class AppController extends ChangeNotifier {
       }
       autoPushClip = prefs.getBool('af_auto_push') ?? false;
       autoPullClip = prefs.getBool('af_auto_pull') ?? false;
-      themeMode = _parseThemeMode(prefs.getString('af_theme_mode'));
+      themeMode.value = _parseThemeMode(prefs.getString('af_theme_mode'));
 
       _applyToService();
       service.addListener(_onServiceChanged);
@@ -204,9 +207,8 @@ class AppController extends ChangeNotifier {
 
   /// 切换外观并持久化，即时生效。
   Future<void> setThemeMode(ThemeMode m) async {
-    if (themeMode == m) return;
-    themeMode = m;
-    _throttledNotify();
+    if (themeMode.value == m) return;
+    themeMode.value = m;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('af_theme_mode', _themeModeKey(m));
   }
@@ -692,6 +694,7 @@ class AppController extends ChangeNotifier {
     service.removeListener(_onServiceChanged);
     service.dispose();
     terminal.dispose();
+    themeMode.dispose();
     super.dispose();
   }
 }

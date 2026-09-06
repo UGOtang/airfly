@@ -84,6 +84,8 @@ String friendlyError(String code) {
       return '同名文件大小不一致，无法续传';
     case 'quota_exceeded':
       return '空间配额已满';
+    case 'space_limit':
+      return '服务端空间数量已满，请联系管理员';
     case 'no_such_file':
       return '文件不存在（可能已过期被清理）';
     case 'file_incomplete':

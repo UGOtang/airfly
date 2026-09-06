@@ -17,3 +17,4 @@ services:
       FILE_TTL_HOURS: 168
       # API_KEY: change-me  # 全局密钥，启用后客户端必须填一致
       # MAX_CLIP_CHARS: 100000
+      # MAX_SPACES: 1000

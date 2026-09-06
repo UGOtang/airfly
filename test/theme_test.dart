@@ -1,4 +1,4 @@
-import 'package:airfly/controllers/app_controller.dart';
+﻿import 'package:airfly/controllers/app_controller.dart';
 import 'package:airfly/screens/home_screen.dart';
 import 'package:airfly/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -6,19 +6,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('深色模式下四个页签均可正常构建', (WidgetTester tester) async {
+  testWidgets('深色模式下五个页签均可正常构建', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({'af_theme_mode': 'dark'});
     final controller = AppController();
     // initialize() 含真 IO（终端初始目录探测），必须包在 runAsync 里，
     // 否则 FakeAsync 下永远等不到 IO 完成。
     await tester.runAsync(() => controller.initialize());
-    expect(controller.themeMode, ThemeMode.dark);
+    expect(controller.themeMode.value, ThemeMode.dark);
 
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: controller.themeMode,
+        themeMode: controller.themeMode.value,
         home: HomeScreen(controller: controller),
       ),
     );
@@ -54,10 +54,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final controller = AppController();
     await tester.runAsync(() => controller.initialize());
-    expect(controller.themeMode, ThemeMode.system);
+    expect(controller.themeMode.value, ThemeMode.system);
 
     await controller.setThemeMode(ThemeMode.dark);
-    expect(controller.themeMode, ThemeMode.dark);
+    expect(controller.themeMode.value, ThemeMode.dark);
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('af_theme_mode'), 'dark');
 
@@ -65,7 +65,7 @@ void main() {
     await prefs.setString('af_theme_mode', 'nope');
     final again = AppController();
     await tester.runAsync(() => again.initialize());
-    expect(again.themeMode, ThemeMode.system);
+    expect(again.themeMode.value, ThemeMode.system);
 
     controller.dispose();
     again.dispose();

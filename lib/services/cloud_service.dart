@@ -328,6 +328,12 @@ class CloudService extends ChangeNotifier {
     Map<String, dynamic> msg;
     try {
       if (data is! String) return;
+      // 恶意/故障服务端可能推送超大帧（如超大剪切板），先拦再解析，
+      // 避免 jsonDecode 吃掉过多内存。正常最大帧约 175KB（128KB 块）。
+      if (data.length > 2 * 1024 * 1024) {
+        debugPrint('dropped oversize frame (${data.length}B)');
+        return;
+      }
       final decoded = jsonDecode(data);
       if (decoded is! Map<String, dynamic>) return;
       msg = decoded;
@@ -614,6 +620,8 @@ class CloudService extends ChangeNotifier {
     bool Function()? isCancelled,
   }) async {
     var offset = startOffset.clamp(0, fileSize);
+    // 停滞计数：服务端若一直回不前进的偏移（故障/恶意），不能无限重发
+    var stagnant = 0;
     onProgress?.call(offset, fileSize);
     while (offset < fileSize) {
       if (isCancelled?.call() == true) throw CancelledError();
@@ -647,13 +655,23 @@ class CloudService extends ChangeNotifier {
       }
       final serverBytes = (ack['uploadedBytes'] as num?)?.toInt() ?? -1;
       if (serverBytes < 0) throw StateError('意外的服务端响应');
+      final next = serverBytes.clamp(0, fileSize);
+      if (next <= offset) {
+        // 本轮无进展：正常续传也可能遇到一次（并发写入），但连续多次
+        // 必是服务端异常，跳出而不能无限循环烧流量烧电
+        if (++stagnant > 10) {
+          throw RetryableError('服务端长时间无进展，已中断（可重试）');
+        }
+      } else {
+        stagnant = 0;
+      }
       if (ack['mismatch'] == true) {
         // 服务端纠正：seek 到正确位置重发（不算错误）
-        offset = serverBytes.clamp(0, fileSize);
+        offset = next;
         onProgress?.call(offset, fileSize);
         continue;
       }
-      offset = serverBytes.clamp(0, fileSize);
+      offset = next;
       onProgress?.call(offset, fileSize);
       if (ack['complete'] == true) break;
     }

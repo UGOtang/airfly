@@ -53,16 +53,16 @@ class _AirFlyAppState extends State<AirFlyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // 监听控制器：主题模式切换时即时重建 MaterialApp
+    // 只监听 themeMode：传输进度等高频通知不再重建整个 MaterialApp
     return ListenableBuilder(
-      listenable: _controller,
+      listenable: _controller.themeMode,
       builder: (context, _) {
         return MaterialApp(
           title: 'AirFly',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: _controller.themeMode,
+          themeMode: _controller.themeMode.value,
           home: HomeScreen(controller: _controller),
         );
       },
