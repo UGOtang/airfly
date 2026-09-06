@@ -8,6 +8,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
+/// 暗夜品牌主色（浅天蓝）上的前景深海军蓝，保证对比度。
+/// 亮/暗品牌主色本身复用 AppTheme.deepBlue / AppTheme.primaryBlue。
+const Color kBrandDarkFg = Color(0xFF06222F);
+
 bool _isTouchPlatform() {
   if (kIsWeb) return false;
   switch (defaultTargetPlatform) {

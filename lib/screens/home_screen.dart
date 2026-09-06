@@ -75,6 +75,26 @@ class _HomeScreenState extends State<HomeScreen> {
             } catch (_) {}
             setState(() => _currentIndex = i);
           },
+          // 选中指示：淡品牌色玻璃 tint（亮 14%/暗 22%），柔和不刺眼；
+          // 选中态靠品牌色图标/文字表达，边缘清晰度交给 sharp 高光
+          indicatorColor: (dark
+                  ? AppTheme.primaryBlue
+                  : AppTheme.deepBlue)
+              .withValues(alpha: dark ? 0.22 : 0.14),
+          selectedIconColor:
+              dark ? AppTheme.primaryBlue : AppTheme.deepBlue,
+          selectedLabelColor:
+              dark ? AppTheme.primaryBlue : AppTheme.deepBlue,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          // 不要外发光晕：边缘清晰度只靠指示条自身的高光
+          glowOpacity: 0.0,
+          // 指示条自身用紧致镜面高光，边缘线条锋利（默认 medium 偏 diffuse）
+          indicatorSettings: const LiquidGlassSettings(
+            specularSharpness: GlassSpecularSharpness.sharp,
+          ),
+          // 指示 pill 稍大一圈，更醒目（只影响绘制，不影响点击区）
+          indicatorExpansion:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         ),
       ),
     );
