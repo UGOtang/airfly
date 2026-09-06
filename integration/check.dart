@@ -240,6 +240,23 @@ Future<void> main() async {
     check(cerr['code'] == 'bad_space_key', '错误密码被拒绝');
     await c.close();
 
+    // ---- 3b. 重复设备 ID：先到的活着（探活通过），后到的被拒，先到业务正常
+    // 回归“两端同 ID 每秒互踢、来回跳动”的 bug。
+    final e = await TClient.connect();
+    await e.hello(space: space, key: key, deviceId: 'devA', name: 'A-clone');
+    final dup = await e.nextWhere((m) => m['type'] == 'error');
+    check(dup['code'] == 'duplicate_device', '重复设备被拒绝');
+    a.send({'type': 'clipboard_push', 'msgId': 'm-dup', 'text': 'after-dup'});
+    final cuAfter = await b.nextWhere(
+      (m) =>
+          m['type'] == 'clipboard_update' &&
+          (m['item'] as Map)['text'] == 'after-dup',
+      what: 'clipboard after dup',
+    );
+    check((cuAfter['item'] as Map)['text'] == 'after-dup',
+        '先到者不受影响、业务正常');
+    await e.close();
+
     // ---- 4. 不同空间隔离
     final d = await TClient.connect();
     await d.hello(

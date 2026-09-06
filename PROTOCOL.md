@@ -53,6 +53,9 @@
 `no_such_file|file_incomplete|empty_chunk|bad_base64|bad_chunk_size|chunk_overflow|`
 `size_mismatch|bad_offset|disk_error|frame_too_large|rate_limited|unknown_type|internal`
 `space_limit`（空间总数超限，拒绝新建空间）
+`duplicate_device`（同设备 ID 已有**活跃**连接，拒绝新连接并延迟断开；
+后到者收到后应停止自动重连。不活跃/半开的旧连接会被直接顶替，
+因此正常断网重连不受影响，最多慢 3 秒——服务端会 ping 探活旧连接）
 
 ## 约束
 

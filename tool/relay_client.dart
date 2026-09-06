@@ -145,6 +145,9 @@ class RelayClient {
   /// 任何状态变化都回调（TUI 重绘 / 日志）。
   void Function()? onEvent;
 
+  /// 已安排的重连次数（测试/状态展示用；duplicate 拒收后应保持 0）。
+  int get reconnectAttempts => _attempt;
+
   WebSocket? _ws;
   StreamSubscription? _sub;
   Timer? _reconnectTimer;
@@ -155,6 +158,10 @@ class RelayClient {
   int _attempt = 0;
   DateTime _lastRecv = DateTime.now();
   int _msgSeq = 0;
+
+  /// duplicate_device 拒收后为 true：停自动重连（与 Flutter 端同逻辑）。
+  bool _duplicateRejected = false;
+  DateTime? _lastDisconnectAt;
 
   final Map<String, Completer<Map<String, dynamic>>> _waiters = {};
   final Map<String, Completer<Map<String, dynamic>>> _dlWaiters = {};
@@ -188,6 +195,7 @@ class RelayClient {
 
   Future<void> connect() {
     _manualClose = false;
+    _duplicateRejected = false;
     _attempt = 0;
     _reconnectTimer?.cancel();
     return _doConnect();
@@ -242,6 +250,7 @@ class RelayClient {
 
   Future<void> reconnectNow() {
     _manualClose = false;
+    _duplicateRejected = false;
     _attempt = 0;
     _reconnectTimer?.cancel();
     _failWaiters('正在重连');
@@ -274,7 +283,8 @@ class RelayClient {
     _cleanupChannel();
     connected = false;
     _emit();
-    if (_disposed || _manualClose) return;
+    _lastDisconnectAt = DateTime.now();
+    if (_disposed || _manualClose || _duplicateRejected) return;
     final delay = _backoff(_attempt++);
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(
@@ -440,12 +450,21 @@ class RelayClient {
       }
     }
     lastErrorCode = code;
+    if (code == 'duplicate_device') {
+      _duplicateRejected = true;
+    }
     _emit();
   }
 
   void _onWelcome(Map<String, dynamic> msg) {
     _helloTimer?.cancel();
-    _attempt = 0;
+    final sinceDisc = _lastDisconnectAt == null
+        ? null
+        : DateTime.now().difference(_lastDisconnectAt!);
+    if (sinceDisc == null || sinceDisc > const Duration(seconds: 10)) {
+      _attempt = 0;
+    }
+    _duplicateRejected = false;
     lastErrorCode = null;
     lastErrorMessage = null;
     final v = msg['maxFileBytes'];

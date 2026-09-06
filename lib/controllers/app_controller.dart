@@ -288,6 +288,18 @@ class AppController extends ChangeNotifier {
   Future<void> connect() => service.reconnectNow();
   Future<void> disconnect() => service.disconnect();
 
+  /// 重置设备标识并重连：当提示“设备已在别处在线”（多因换机克隆
+  /// 把旧设备 ID 一起搬过来，导致两端互踢）时用这个一键自救。
+  /// 重置后本机是全新身份，老记录 90 秒内自动过期，不影响他人。
+  Future<void> resetDeviceId() async {
+    deviceId = _uuid.v4();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('af_device_id', deviceId);
+    _applyToService();
+    _throttledNotify();
+    unawaited(service.reconnectNow().catchError((_) {}));
+  }
+
   // ---------------------------------------------------------------- 剪切板
 
   /// 本地轮询：自动推送开启时，把本地新内容同步到云端。

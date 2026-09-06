@@ -203,6 +203,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             control: FTextFieldControl.managed(controller: _spaceKey),
             label: const Text('空间密码（可选）'),
             hint: '首次加入即创建，之后须一致',
+            // 注意：forui 默认的眼睛切换按钮会产生非法语义矩形
+            //（不可见节点带点击，已有断言报错），这里直接关掉
+            suffixBuilder: null,
           ),
           const SizedBox(height: 12),
           FTextField.password(
@@ -210,6 +213,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             control: FTextFieldControl.managed(controller: _apiKey),
             label: const Text('服务端密钥（可选）'),
             hint: '与服务端 API_KEY 一致',
+            suffixBuilder: null,
           ),
           const SizedBox(height: 12),
           FTextField(
@@ -238,6 +242,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               variant: .outline,
               onPress: () => c.disconnect(),
               child: const Text('断开连接'),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Center(
+            child: FButton(
+              variant: .ghost,
+              onPress: () => _resetDeviceId(),
+              child: Text(
+                '重置设备标识',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppPalette.of(context).sub,
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '提示“设备已在别处在线”（多因换机克隆）导致来回跳动时点它',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppPalette.of(context).faint,
+              ),
             ),
           ),
         ],
@@ -371,6 +400,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _resetDeviceId() async {
+    try {
+      await widget.controller.resetDeviceId();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('设备标识已重置并重连'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('重置失败：$e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   Future<void> _save() async {

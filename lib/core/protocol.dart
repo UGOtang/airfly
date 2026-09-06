@@ -86,6 +86,8 @@ String friendlyError(String code) {
       return '空间配额已满';
     case 'space_limit':
       return '服务端空间数量已满，请联系管理员';
+    case 'duplicate_device':
+      return '该设备已在别处在线（应用数据可能被克隆），本机已停止重连';
     case 'no_such_file':
       return '文件不存在（可能已过期被清理）';
     case 'file_incomplete':

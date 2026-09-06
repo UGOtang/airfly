@@ -89,6 +89,14 @@ class CloudService extends ChangeNotifier {
   int _attempt = 0;
   DateTime _lastRecv = DateTime.now();
 
+  /// 被服务端以 duplicate_device 拒绝后为 true：停止自动重连，
+  /// 等用户手动处理（重置设备标识或去重），否则两端互踢永不停。
+  bool _duplicateRejected = false;
+
+  /// 上次断开时间：距上次断开不足 10 秒就又 welcome，说明在快闪，
+  /// 不重置退避计数（否则互踢/抖动会把退避永远钉在 1 秒）。
+  DateTime? _lastDisconnectAt;
+
   Timer? _notifyTimer;
   bool _notifyPending = false;
 
@@ -96,6 +104,9 @@ class CloudService extends ChangeNotifier {
   final Map<String, Completer<Map<String, dynamic>>> _dlWaiters = {};
 
   bool get isConnected => state == ConnState.connected;
+
+  /// 已安排的重连次数（duplicate 拒收后应保持 0，即停 retry）。
+  int get reconnectAttempts => _attempt;
 
   void applyConfig({
     required String serverUrl,
@@ -143,6 +154,7 @@ class CloudService extends ChangeNotifier {
   /// 用户主动连接（重置退避计数）。
   Future<void> connect() {
     _manualClose = false;
+    _duplicateRejected = false;
     _attempt = 0;
     _reconnectTimer?.cancel();
     return _doConnect();
@@ -227,6 +239,7 @@ class CloudService extends ChangeNotifier {
 
   Future<void> reconnectNow() {
     _manualClose = false;
+    _duplicateRejected = false;
     _attempt = 0;
     _reconnectTimer?.cancel();
     _failWaiters('正在重连');
@@ -248,7 +261,8 @@ class CloudService extends ChangeNotifier {
     _helloTimer?.cancel();
     _failWaiters('连接已断开');
     _cleanupChannel();
-    if (_disposed || _manualClose) {
+    _lastDisconnectAt = DateTime.now();
+    if (_disposed || _manualClose || _duplicateRejected) {
       _setState(ConnState.disconnected);
       return;
     }
@@ -416,12 +430,25 @@ class CloudService extends ChangeNotifier {
       }
     }
     // 无人认领的错误：展示给 UI
+    if (code == 'duplicate_device') {
+      // 服务端判定本设备已在别处在线：停自动重连，等用户处理，
+      // 否则两端 hello 互踢、每次 welcome 又重置退避，永远 1 秒一跳
+      _duplicateRejected = true;
+    }
     _setError(code);
   }
 
   void _onWelcome(Map<String, dynamic> msg) {
     _helloTimer?.cancel();
-    _attempt = 0;
+    // 只有上次会话活过 10 秒才算稳定重连、重置退避；
+    // 快闪（秒级掉线又 welcome）保留计数继续升级，避免互踢钉死在 1 秒
+    final sinceDisc = _lastDisconnectAt == null
+        ? null
+        : DateTime.now().difference(_lastDisconnectAt!);
+    if (sinceDisc == null || sinceDisc > const Duration(seconds: 10)) {
+      _attempt = 0;
+    }
+    _duplicateRejected = false;
     lastErrorCode = null;
     lastErrorMessage = null;
     final v = msg['maxFileBytes'];

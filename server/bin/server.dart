@@ -711,16 +711,42 @@ class RelayServer {
       // 空间无密码但有人带密码创建？以首次创建为准，不覆盖。
     }
 
-    // 同 deviceId 顶掉旧连接（切换网络/重连时常见），避免幽灵设备
+    // 同 deviceId 已有连接：先验活再决定，避免两种极端—
+    // ①无脑顶替：换机克隆导致两端同 ID 时，双方每秒互踢（每次 welcome
+    //    都会重置客户端退避，形成固定周期的来回跳动）；
+    // ②无脑拒绝：正常断网重连会被卡住。
+    // 规则：30 秒内有动静的先 ping 探活（客户端会自动回 pong），
+    // 有应答 = 对端活着 → 拒绝新连接（duplicate_device），老连接不动；
+    // 无应答/半开连接/超过 30 秒没动静 = 僵尸 → 顶掉。
     final stale = space.conns.values
         .where((c) => c.deviceId == deviceId)
         .toList();
-    for (final s in stale) {
-      try {
-        s.socket.close(WebSocketStatus.policyViolation, 'replaced');
-      } catch (_) {}
-      _conns.remove(s.connKey);
-      space.conns.remove(s.connKey);
+    if (stale.isNotEmpty) {
+      final freshCutoff =
+          DateTime.now().subtract(const Duration(seconds: 30));
+      final candidates =
+          stale.where((c) => c.helloOk && c.lastSeen.isAfter(freshCutoff)).toList();
+      _Conn? alive;
+      if (candidates.isNotEmpty) {
+        candidates.sort((a, b) => b.lastSeen.compareTo(a.lastSeen));
+        alive = await _probeAlive(candidates.first);
+      }
+      if (alive != null) {
+        _send(conn, {'type': 'error', 'code': 'duplicate_device'});
+        // 延迟断开，让客户端读到错误码后安静停 retry（见客户端处理）
+        Timer(const Duration(milliseconds: 500),
+            () => _closeConn(conn, 'duplicate device'));
+        log('duplicate $deviceName ($deviceId) rejected in $spaceId');
+        return;
+      }
+      for (final s in stale) {
+        try {
+          s.socket.close(WebSocketStatus.policyViolation, 'replaced');
+        } catch (_) {}
+        _conns.remove(s.connKey);
+        space.conns.remove(s.connKey);
+      }
+      log('zombie $deviceName ($deviceId) replaced in $spaceId');
     }
 
     conn.spaceId = spaceId;
@@ -761,6 +787,31 @@ class RelayServer {
     });
     _broadcastPresence(space);
     log('hello $deviceName ($deviceId) -> $spaceId');
+  }
+
+  /// 探测一个连接是否还活着：发 ping，3 秒内有任何消息（含自动 pong）
+  /// 即算活。返回活着的连接，超时/已消失返回 null。
+  /// 注意：只读状态、不阻塞事件循环，调用方根据结果再处理。
+  Future<_Conn?> _probeAlive(_Conn old) async {
+    final mark = old.lastSeen;
+    try {
+      old.socket.add(jsonEncode({
+        'type': 'ping',
+        'ts': DateTime.now().millisecondsSinceEpoch,
+      }));
+    } catch (_) {
+      return null; // 写都写不进去，必死
+    }
+    final deadline = DateTime.now().add(const Duration(seconds: 3));
+    while (DateTime.now().isBefore(deadline)) {
+      // 探测期间连接没了（对端断开/被清理）→ 判死
+      if (!_conns.containsKey(old.connKey)) return null;
+      // 严格大于：同一毫秒内的旧消息不算数（几乎不可能，宁可误判死
+      // 走顶替自愈，也不误判活把合法重连卡住）
+      if (old.lastSeen.isAfter(mark)) return old;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return null;
   }
 
   // ---------------- 剪切板

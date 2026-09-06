@@ -157,6 +157,26 @@ Future<void> main() async {
     check(bad.lastErrorCode == 'bad_space_key', '错误密码被拒绝');
     await bad.dispose();
 
+    // 重复设备 ID：先到稳定，后到被拒且停 retry（reconnectAttempts 保持 0）
+    final e = mk('devA', 'A-clone');
+    await e.connect();
+    await waitFor(() => e.lastErrorCode == 'duplicate_device',
+        what: 'dup rejected');
+    check(true, '重复设备被拒绝');
+    await Future<void>.delayed(const Duration(seconds: 3));
+    check(
+        !e.connected &&
+            e.lastErrorCode == 'duplicate_device' &&
+            e.reconnectAttempts == 0,
+        '拒后不再重连');
+    check(a.connected, '先到者保持在线');
+    await a.pushClip('after-dup-ok');
+    await waitFor(
+        () => b.clipHistory.any((cc) => cc.text == 'after-dup-ok'),
+        what: 'clip after dup');
+    check(true, '先到者业务正常');
+    await e.dispose();
+
     // 剪切板
     const clipText = 'relay client 你好 456';
     await a.pushClip(clipText);
