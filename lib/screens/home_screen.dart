@@ -1,6 +1,8 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forui/forui.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../controllers/app_controller.dart';
 import '../services/cloud_service.dart';
@@ -36,13 +38,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final dark =
         Theme.of(context).brightness == Brightness.dark;
+    final p = AppPalette.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       // 自定义顶栏没有 AppBar，必须手动让状态栏图标随主题反色，
       // 否则深色下黑图标黑底看不见。
       value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
+        // 内容延伸到底栏之下，毛玻璃才有东西可模糊
+        extendBody: true,
         body: Container(
-          decoration: BoxDecoration(gradient: AppPalette.of(context).page),
+          decoration: BoxDecoration(gradient: p.page),
           child: SafeArea(
             bottom: false,
             child: Column(
@@ -55,32 +60,22 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-      bottomNavigationBar: FBottomNavigationBar(
-        index: _currentIndex,
-        onChange: (i) => setState(() => _currentIndex = i),
-        children: const [
-          FBottomNavigationBarItem(
-            icon: Icon(Icons.content_paste_rounded),
-            label: Text('剪切板'),
-          ),
-          FBottomNavigationBarItem(
-            icon: Icon(Icons.folder_rounded),
-            label: Text('文件'),
-          ),
-          FBottomNavigationBarItem(
-            icon: Icon(Icons.terminal_rounded),
-            label: Text('终端'),
-          ),
-          FBottomNavigationBarItem(
-            icon: Icon(Icons.devices_rounded),
-            label: Text('设备'),
-          ),
-          FBottomNavigationBarItem(
-            icon: Icon(Icons.settings_rounded),
-            label: Text('设置'),
-          ),
-        ],
-      ),
+        bottomNavigationBar: GlassTabBar.bottom(
+          tabs: const [
+            GlassTab(icon: Icon(Icons.content_paste_rounded), label: '剪切板'),
+            GlassTab(icon: Icon(Icons.folder_rounded), label: '文件'),
+            GlassTab(icon: Icon(Icons.terminal_rounded), label: '终端'),
+            GlassTab(icon: Icon(Icons.devices_rounded), label: '设备'),
+            GlassTab(icon: Icon(Icons.settings_rounded), label: '设置'),
+          ],
+          selectedIndex: _currentIndex,
+          onTabSelected: (i) {
+            try {
+              HapticFeedback.selectionClick();
+            } catch (_) {}
+            setState(() => _currentIndex = i);
+          },
+        ),
       ),
     );
   }
@@ -137,15 +132,25 @@ class _StatusBar extends StatelessWidget {
                   );
                 }
               },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppPalette.of(context).chip,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppPalette.of(context).chip,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppPalette.of(context).isDark
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.06),
+                        width: 1,
+                      ),
+                    ),
                 child: Row(
                   children: [
                     Container(
@@ -178,7 +183,9 @@ class _StatusBar extends StatelessWidget {
               ),
             ),
           ),
-        );
+        ),
+      ),
+    );
       },
     );
   }

@@ -94,7 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             animation: widget.controller,
             builder: (context, _) => ListView(
               key: const Key('settings_list'),
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
               children: [
                 _buildConnCard(),
                 const SizedBox(height: 12),

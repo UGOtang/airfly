@@ -9,11 +9,12 @@ void main() {
     await tester.pumpWidget(const AirFlyApp());
     await tester.pump();
 
-    expect(find.text('剪切板'), findsOneWidget);
-    expect(find.text('文件'), findsOneWidget);
-    expect(find.text('终端'), findsOneWidget);
-    expect(find.text('设备'), findsOneWidget);
-    expect(find.text('设置'), findsOneWidget);
+    // GlassTabBar 为选中/未选中各渲染一份标签，断言存在即可
+    expect(find.text('剪切板'), findsWidgets);
+    expect(find.text('文件'), findsWidgets);
+    expect(find.text('终端'), findsWidgets);
+    expect(find.text('设备'), findsWidgets);
+    expect(find.text('设置'), findsWidgets);
     expect(find.text('共享剪切板'), findsOneWidget);
   });
 }

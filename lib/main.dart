@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'controllers/app_controller.dart';
 import 'screens/home_screen.dart';
 import 'theme/forui_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AirFlyApp());
+  // 预热 liquid glass shader，避免首帧白闪（纯异步磁盘 IO，不阻塞窗口出现）
+  await LiquidGlassWidgets.initialize();
+  runApp(
+    LiquidGlassWidgets.wrap(
+      // 让 glass 亮暗跟随 MaterialApp 的 ThemeMode，而不是裸 OS 亮度
+      brightnessResolver: Theme.maybeBrightnessOf,
+      child: const AirFlyApp(),
+    ),
+  );
 }
 
 class AirFlyApp extends StatefulWidget {

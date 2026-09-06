@@ -45,7 +45,7 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
               final rest = history.length - visible.length;
               return ListView(
                 key: const Key('clipboard_list'),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                 children: [
                   _buildComposer(c),
                   const SizedBox(height: 12),

@@ -195,7 +195,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
   Widget _buildBody() {
     final p = AppPalette.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
       child: Column(
         children: [
           Expanded(

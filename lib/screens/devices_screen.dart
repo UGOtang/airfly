@@ -30,7 +30,7 @@ class DevicesScreen extends StatelessWidget {
               return RefreshIndicator(
                 onRefresh: () => controller.refreshFiles(),
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                   itemCount: devices.length,
                   itemBuilder: (context, i) =>
                       _buildDeviceCard(context, devices[i]),

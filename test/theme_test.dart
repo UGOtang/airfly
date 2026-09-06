@@ -41,21 +41,21 @@ void main() {
     );
     await tester.pump();
 
-    // 暗夜调色板应生效
-    final context = tester.element(find.text('剪切板'));
+    // 暗夜调色板应生效（GlassTabBar 选中/未选中各渲染一份标签，取第一份）
+    final context = tester.element(find.text('剪切板').first);
     expect(AppPalette.of(context).isDark, isTrue);
 
-    // 逐一切页，把页面的深色分支都构建出来
+    // 逐一切页，把页面的深色分支都构建出来（同理用 .first 点可命中的那份）
     expect(find.text('共享剪切板'), findsOneWidget);
-    await tester.tap(find.text('文件'));
+    await tester.tap(find.text('文件').first);
     await tester.pump();
     expect(find.text('云端文件'), findsOneWidget);
-    await tester.tap(find.text('终端'));
+    await tester.tap(find.text('终端').first);
     await tester.pump();
     expect(find.text('本地终端'), findsOneWidget);
-    await tester.tap(find.text('设备'));
+    await tester.tap(find.text('设备').first);
     await tester.pump();
-    await tester.tap(find.text('设置'));
+    await tester.tap(find.text('设置').first);
     await tester.pump();
     // 外观卡在首屏下方（ListView 懒加载）：先滚再断言。
     // 注意取第一个 Scrollable：FTextField 内部自带 Scrollable，

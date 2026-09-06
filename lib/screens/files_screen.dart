@@ -49,7 +49,7 @@ class _FilesScreenState extends State<FilesScreen> {
               return RefreshIndicator(
                 onRefresh: () => c.refreshFiles(),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                   children: [
                     if (activeTasks.isNotEmpty) ...[
                       _sectionTitle('传输任务（${activeTasks.length}）'),
