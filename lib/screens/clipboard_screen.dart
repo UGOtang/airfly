@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../controllers/app_controller.dart';
 import '../models/clipboard_item.dart';
@@ -18,6 +19,11 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
   final TextEditingController _input = TextEditingController();
   bool _sending = false;
 
+  /// 分页：每次多显示 20 条。直接按当前列表长度 take，
+  /// 远端新增/替换时自动跟随，无需手动重置（也不会把用户顶回顶部）。
+  static const int _pageSize = 20;
+  int _visibleCount = _pageSize;
+
   @override
   void dispose() {
     _input.dispose();
@@ -34,7 +40,11 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
             animation: widget.controller,
             builder: (context, _) {
               final c = widget.controller;
+              final history = c.service.clipHistory;
+              final visible = history.take(_visibleCount).toList();
+              final rest = history.length - visible.length;
               return ListView(
+                key: const Key('clipboard_list'),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 children: [
                   _buildComposer(c),
@@ -42,8 +52,9 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
                   _buildAutoSyncCard(c),
                   const SizedBox(height: 12),
                   _buildHistoryHeader(c),
-                  ...c.service.clipHistory.map(_buildHistoryCard),
-                  if (c.service.clipHistory.isEmpty) _buildEmptyHint(),
+                  ...visible.map(_buildHistoryCard),
+                  if (rest > 0) _buildLoadMore(rest),
+                  if (history.isEmpty) _buildEmptyHint(),
                 ],
               );
             },
@@ -106,21 +117,19 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: _input,
-            maxLines: 4,
+          FTextField.multiline(
+            control: FTextFieldControl.managed(controller: _input),
+            hint: '输入要同步的文本…',
             minLines: 2,
+            maxLines: 4,
             maxLength: 20000,
-            decoration: const InputDecoration(
-              hintText: '输入要同步的文本…',
-              counterText: '',
-            ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              OutlinedButton.icon(
-                onPressed: () async {
+              FButton(
+                variant: .outline,
+                onPress: () async {
                   final t = await c.readLocalClipboard();
                   if (t == null || t.isEmpty) {
                     if (!mounted) return;
@@ -131,33 +140,21 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
                   }
                   _input.text = t;
                 },
-                icon: const Icon(Icons.paste_rounded, size: 18),
-                label: const Text('粘贴'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppPalette.of(context).sub,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
+                child: const Text('粘贴'),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: FilledButton.icon(
-                  onPressed: (!connected || _sending)
+                child: FButton(
+                  onPress: (!connected || _sending)
                       ? null
                       : () => _push(c),
-                  icon: _sending
+                  child: _sending
                       ? const SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.cloud_upload_rounded, size: 18),
-                  label: Text(connected ? '同步到云端' : '未连接'),
+                      : Text(connected ? '同步到云端' : '未连接'),
                 ),
               ),
             ],
@@ -200,41 +197,26 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
     return Container(
       decoration: CardDecoration.softOf(context),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      // SwitchListTile 的水波纹需要 Material 祖先在装饰层之内
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          children: [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                '自动推送本地剪切板',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-              subtitle: const Text(
-                '复制即同步（每2秒检测）',
-                style: TextStyle(fontSize: 12),
-              ),
+      child: Column(
+        children: [
+          FTile(
+            title: const Text('自动推送本地剪切板'),
+            subtitle: const Text('复制即同步（每2秒检测）'),
+            suffix: FSwitch(
               value: c.autoPushClip,
-              onChanged: (v) => c.setAutoSync(push: v),
+              onChange: (v) => c.setAutoSync(push: v),
             ),
-            const Divider(height: 1),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                '自动写入本地剪切板',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-              subtitle: const Text(
-                '收到远端文本即复制到本机',
-                style: TextStyle(fontSize: 12),
-              ),
+          ),
+          const FDivider(),
+          FTile(
+            title: const Text('自动写入本地剪切板'),
+            subtitle: const Text('收到远端文本即复制到本机'),
+            suffix: FSwitch(
               value: c.autoPullClip,
-              onChanged: (v) => c.setAutoSync(pull: v),
+              onChange: (v) => c.setAutoSync(pull: v),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -254,12 +236,27 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
           ),
           const Spacer(),
           if (c.service.clipLatest != null)
-            TextButton.icon(
-              onPressed: () => _copyItem(c, c.service.clipLatest!),
-              icon: const Icon(Icons.copy_rounded, size: 16),
-              label: const Text('复制最新'),
+            FButton(
+              variant: .ghost,
+              onPress: () => _copyItem(c, c.service.clipLatest!),
+              child: const Text('复制最新'),
             ),
         ],
+      ),
+    );
+  }
+
+  /// 分页加载更多按钮（显示剩余条数）。
+  Widget _buildLoadMore(int rest) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: SizedBox(
+        width: double.infinity,
+        child: FButton(
+          variant: .outline,
+          onPress: () => setState(() => _visibleCount += _pageSize),
+          child: Text('显示更多（剩余 $rest 条）'),
+        ),
       ),
     );
   }
@@ -323,11 +320,16 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                _formatTime(item.updatedAt),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppPalette.of(context).faint,
+              Flexible(
+                child: Text(
+                  // 绝对时间 + 相对时间双记：绝对用于查证，相对一眼可读
+                  '${_formatAbsolute(item.updatedAt)} · ${_formatTime(item.updatedAt)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppPalette.of(context).faint,
+                  ),
                 ),
               ),
               const Spacer(),
@@ -372,6 +374,21 @@ class _ClipboardScreenState extends State<ClipboardScreen> {
     if (diff.inMinutes < 1) return '刚刚';
     if (diff.inHours < 1) return '${diff.inMinutes} 分钟前';
     if (diff.inDays < 1) return '${diff.inHours} 小时前';
-    return '${t.month}月${t.day}日 ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    if (diff.inDays < 30) return '${diff.inDays} 天前';
+    return _formatAbsolute(t);
+  }
+
+  /// 绝对时间：同年省略年，今天省略日期，精确到分钟（跨年补年）。
+  String _formatAbsolute(DateTime t) {
+    final now = DateTime.now();
+    final hm =
+        '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    final sameDay = t.year == now.year &&
+        t.month == now.month &&
+        t.day == now.day;
+    if (sameDay) return hm;
+    final md = '${t.month}月${t.day}日';
+    if (t.year == now.year) return '$md $hm';
+    return '${t.year}年$md $hm';
   }
 }

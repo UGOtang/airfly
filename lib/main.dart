@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import 'controllers/app_controller.dart';
 import 'screens/home_screen.dart';
-import 'theme/app_theme.dart';
+import 'theme/forui_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,12 @@ class AirFlyApp extends StatefulWidget {
 
 class _AirFlyAppState extends State<AirFlyApp> with WidgetsBindingObserver {
   final AppController _controller = AppController();
+
+  // 主题实例缓存：FTheme 要求同输入同实例，否则切换时闪烁
+  late final FThemeData _light = airFlyTheme(Brightness.light);
+  late final FThemeData _dark = airFlyTheme(Brightness.dark);
+  late final ThemeData _matLight = airFlyMaterial(Brightness.light);
+  late final ThemeData _matDark = airFlyMaterial(Brightness.dark);
 
   @override
   void initState() {
@@ -60,9 +67,19 @@ class _AirFlyAppState extends State<AirFlyApp> with WidgetsBindingObserver {
         return MaterialApp(
           title: 'AirFly',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
+          theme: _matLight,
+          darkTheme: _matDark,
           themeMode: _controller.themeMode.value,
+          supportedLocales: FLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            ...FLocalizations.localizationsDelegates
+          ],
+          builder: (context, child) => FTheme(
+            data: Theme.brightnessOf(context) == Brightness.light
+                ? _light
+                : _dark,
+            child: FToaster(child: FTooltipGroup(child: child!)),
+          ),
           home: HomeScreen(controller: _controller),
         );
       },

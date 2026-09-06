@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../controllers/app_controller.dart';
 import '../models/cloud_file.dart';
@@ -61,8 +62,9 @@ class _FilesScreenState extends State<FilesScreen> {
                     if (finishedTasks.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       _sectionTitle('已完成 / 失败（${finishedTasks.length}）',
-                          action: TextButton(
-                            onPressed: () =>
+                          action: FButton(
+                            variant: .ghost,
+                            onPress: () =>
                                 widget.controller.clearFinishedTasks(),
                             child: const Text('清空'),
                           )),
@@ -138,16 +140,15 @@ class _FilesScreenState extends State<FilesScreen> {
               ],
             ),
           ),
-          FilledButton.icon(
-            onPressed: _picking ? null : _pickAndUpload,
-            icon: _picking
+          FButton(
+            onPress: _picking ? null : _pickAndUpload,
+            child: _picking
                 ? const SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.upload_rounded, size: 18),
-            label: const Text('上传'),
+                : const Text('上传'),
           ),
         ],
       ),
@@ -275,13 +276,10 @@ class _FilesScreenState extends State<FilesScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: t.total > 0 ? t.progress : null,
-              minHeight: 6,
-            ),
-          ),
+          if (t.total > 0)
+            FDeterminateProgress(value: t.progress)
+          else
+            const FProgress(),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -302,16 +300,17 @@ class _FilesScreenState extends State<FilesScreen> {
               if (t.state == TransferState.active ||
                   t.state == TransferState.paused ||
                   t.state == TransferState.queued)
-                TextButton(
-                  onPressed: () =>
-                      widget.controller.cancelTask(t.key),
+                FButton(
+                  variant: .ghost,
+                  onPress: () => widget.controller.cancelTask(t.key),
                   child: const Text('取消'),
                 ),
               if (t.state == TransferState.paused ||
                   t.state == TransferState.failed ||
                   t.state == TransferState.cancelled)
-                TextButton(
-                  onPressed: () => _retryTask(t),
+                FButton(
+                  variant: .ghost,
+                  onPress: () => _retryTask(t),
                   child: const Text('重试'),
                 ),
               if (t.state == TransferState.done ||
@@ -393,13 +392,7 @@ class _FilesScreenState extends State<FilesScreen> {
           ),
           if (!f.complete) ...[
             const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: f.progress,
-                minHeight: 6,
-              ),
-            ),
+            FDeterminateProgress(value: f.progress),
             const SizedBox(height: 6),
             Text(
               '上传中 ${(f.progress * 100).toStringAsFixed(0)}%（${CloudFile.formatSize(f.uploadedBytes)} / ${CloudFile.formatSize(f.size)}）',
@@ -413,17 +406,10 @@ class _FilesScreenState extends State<FilesScreen> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _download(f),
-                    icon: const Icon(Icons.download_rounded, size: 18),
-                    label: const Text('下载'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppPalette.of(context).strong,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                  child: FButton(
+                    variant: .outline,
+                    onPress: () => _download(f),
+                    child: const Text('下载'),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -481,28 +467,56 @@ class _FilesScreenState extends State<FilesScreen> {
     );
   }
 
-  Future<void> _download(CloudFile f) async {
-    if (kIsWeb && f.size > AppController.kWebSoftLimit) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('文件较大'),
-          content: Text(
-            '该文件 ${CloudFile.formatSize(f.size)}，Web 端下载可能因内存不足失败，建议用桌面 / 移动端下载。仍要继续吗？',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('继续'),
+  Future<bool> _askConfirm({
+    required String title,
+    required String body,
+    required String okLabel,
+    required bool destructive,
+  }) async {
+    final ok = await showFDialog<bool>(
+      context: context,
+      builder: (context, style, animation) => FDialog(
+        builder: (context, style) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: style.titleTextStyle),
+            const SizedBox(height: 8),
+            Text(body, style: style.bodyTextStyle),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FButton(
+                  variant: .ghost,
+                  onPress: () => Navigator.pop(context, false),
+                  child: const Text('取消'),
+                ),
+                const SizedBox(width: 8),
+                FButton(
+                  variant: destructive ? .destructive : .primary,
+                  onPress: () => Navigator.pop(context, true),
+                  child: Text(okLabel),
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+    return ok == true;
+  }
+
+  Future<void> _download(CloudFile f) async {
+    if (kIsWeb && f.size > AppController.kWebSoftLimit) {
+      final ok = await _askConfirm(
+        title: '文件较大',
+        body:
+            '该文件 ${CloudFile.formatSize(f.size)}，Web 端下载可能因内存不足失败，建议用桌面 / 移动端下载。仍要继续吗？',
+        okLabel: '继续',
+        destructive: false,
       );
-      if (ok != true) return;
+      if (!ok) return;
     }
     try {
       await widget.controller.startDownload(f);
@@ -519,25 +533,13 @@ class _FilesScreenState extends State<FilesScreen> {
   }
 
   Future<void> _confirmDelete(CloudFile f) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除云端文件？'),
-        content: Text('「${f.name}」将对空间内所有设备不可见，该操作不可撤销。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
+    final ok = await _askConfirm(
+      title: '删除云端文件？',
+      body: '「${f.name}」将对空间内所有设备不可见，该操作不可撤销。',
+      okLabel: '删除',
+      destructive: true,
     );
-    if (ok != true) return;
+    if (!ok) return;
     try {
       await widget.controller.deleteCloudFile(f.id);
     } catch (e) {

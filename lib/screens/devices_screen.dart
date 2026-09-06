@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../controllers/app_controller.dart';
 import '../models/device_info.dart';
@@ -147,10 +148,9 @@ class DevicesScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () => controller.connect(),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('立即连接'),
+            FButton(
+              onPress: () => controller.connect(),
+              child: const Text('立即连接'),
             ),
           ],
         ),
@@ -239,25 +239,8 @@ class DevicesScreen extends StatelessWidget {
                       ),
                       if (isMine) ...[
                         const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryBlue.withValues(
-                              alpha: 0.12,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '本机',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppPalette.of(context).strong,
-                            ),
-                          ),
+                        FBadge(
+                          child: Text('本机'),
                         ),
                       ],
                     ],

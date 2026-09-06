@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forui/forui.dart';
 
 import '../controllers/app_controller.dart';
 import '../services/cloud_service.dart';
@@ -54,98 +55,32 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppPalette.of(context).nav,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  icon: Icons.content_paste_rounded,
-                  label: '剪切板',
-                  index: 0,
-                ),
-                _buildNavItem(
-                  icon: Icons.folder_rounded,
-                  label: '文件',
-                  index: 1,
-                ),
-                _buildNavItem(
-                  icon: Icons.terminal_rounded,
-                  label: '终端',
-                  index: 2,
-                ),
-                _buildNavItem(
-                  icon: Icons.devices_rounded,
-                  label: '设备',
-                  index: 3,
-                ),
-                _buildNavItem(
-                  icon: Icons.settings_rounded,
-                  label: '设置',
-                  index: 4,
-                ),
-              ],
-            ),
+      bottomNavigationBar: FBottomNavigationBar(
+        index: _currentIndex,
+        onChange: (i) => setState(() => _currentIndex = i),
+        children: const [
+          FBottomNavigationBarItem(
+            icon: Icon(Icons.content_paste_rounded),
+            label: Text('剪切板'),
           ),
-        ),
+          FBottomNavigationBarItem(
+            icon: Icon(Icons.folder_rounded),
+            label: Text('文件'),
+          ),
+          FBottomNavigationBarItem(
+            icon: Icon(Icons.terminal_rounded),
+            label: Text('终端'),
+          ),
+          FBottomNavigationBarItem(
+            icon: Icon(Icons.devices_rounded),
+            label: Text('设备'),
+          ),
+          FBottomNavigationBarItem(
+            icon: Icon(Icons.settings_rounded),
+            label: Text('设置'),
+          ),
+        ],
       ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required int index,
-  }) {
-    final isSelected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? AppPalette.of(context).strong
-                  : AppPalette.of(context).sub,
-              size: 24,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? AppPalette.of(context).strong
-                    : AppPalette.of(context).sub,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

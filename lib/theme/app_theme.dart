@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:forui/forui.dart';
 
-/// 日式少年风格主题：浅色 + 暗夜两套。
+/// 品牌常量 + 自适应调色板。
 /// 页面中与明暗相关的颜色一律走 [AppPalette.of(context)] 取，
-/// 品牌色（天空蓝/活力橙）两套主题共用，保证识别一致。
+/// 它从 Forui 主题（[FTheme]）派生：换肤只改 forui_theme.dart 即可，
+/// 这里不做第二套定义，避免两边分叉。
 class AppTheme {
   // 主色调 - 清爽的天空蓝
   static const Color primaryBlue = Color(0xFF4FC3F7);
@@ -18,12 +19,12 @@ class AppTheme {
   static const Color bgCream = Color(0xFFFDF8F0);
   static const Color bgWhite = Color(0xFFFFFFFF);
 
-  // 文字色（浅色主题用；深色主题用 AppPalette.dark）
+  // 文字色（历史常量保留给固定点缀用；页面正文走 AppPalette）
   static const Color textDark = Color(0xFF37474F);
   static const Color textGrey = Color(0xFF90A4AE);
   static const Color textLight = Color(0xFFB0BEC5);
 
-  // 渐变背景（浅色）
+  // 页面渐变背景（亮/暗）
   static const LinearGradient bgGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
@@ -60,344 +61,9 @@ class AppTheme {
       Color(0xFFFFA726),
     ],
   );
-
-  // ---------------- 浅色主题
-
-  static ThemeData get lightTheme {
-    final base = ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryBlue,
-        brightness: Brightness.light,
-        primary: primaryBlue,
-        secondary: accentOrange,
-        surface: bgWhite,
-      ),
-      scaffoldBackgroundColor: bgCream,
-    );
-
-    return base.copyWith(
-      textTheme: _textTheme(base.textTheme, textDark, textGrey),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
-        titleTextStyle: TextStyle(
-          color: textDark,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
-        iconTheme: IconThemeData(color: textDark),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        color: bgWhite,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-      elevatedButtonTheme: _elevatedButtonTheme(),
-      filledButtonTheme: _filledButtonTheme(),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        shape: CircleBorder(),
-      ),
-      chipTheme: ChipThemeData(
-        backgroundColor: const Color(0xFFE1F5FE),
-        selectedColor: primaryBlue,
-        labelStyle: const TextStyle(color: textDark, fontSize: 13),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        side: BorderSide.none,
-      ),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: textDark,
-        contentTextStyle: const TextStyle(color: Colors.white),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: bgWhite,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        titleTextStyle: const TextStyle(
-          color: textDark,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-        ),
-        contentTextStyle: const TextStyle(
-          color: textGrey,
-          fontSize: 15,
-          height: 1.5,
-        ),
-      ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: bgWhite,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        showDragHandle: true,
-      ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: primaryBlue,
-        linearTrackColor: Color(0xFFE1F5FE),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: Color(0xFFECEFF1),
-        thickness: 1,
-        space: 1,
-      ),
-      inputDecorationTheme: _inputTheme(
-        fill: const Color(0xFFF5F5F5),
-        hint: textGrey,
-      ),
-      tabBarTheme: const TabBarThemeData(
-        labelColor: deepBlue,
-        unselectedLabelColor: textGrey,
-        indicatorColor: primaryBlue,
-        labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-      ),
-      listTileTheme: const ListTileThemeData(
-        iconColor: primaryBlue,
-        textColor: textDark,
-      ),
-    );
-  }
-
-  // ---------------- 深色主题
-
-  static const Color _darkBg = Color(0xFF0E1522);
-  static const Color _darkCard = Color(0xFF1A2334);
-  static const Color _darkText = Color(0xFFE9EFF6);
-  static const Color _darkSub = Color(0xFF9AA9BC);
-  static const Color _darkStrong = Color(0xFF7FD0F7);
-
-  static ThemeData get darkTheme {
-    final base = ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryBlue,
-        brightness: Brightness.dark,
-        primary: primaryBlue,
-        secondary: accentOrange,
-        surface: _darkCard,
-      ),
-      scaffoldBackgroundColor: _darkBg,
-    );
-
-    return base.copyWith(
-      textTheme: _textTheme(base.textTheme, _darkText, _darkSub),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-        titleTextStyle: TextStyle(
-          color: _darkText,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
-        iconTheme: IconThemeData(color: _darkText),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        color: _darkCard,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(
-            color: Color(0x14FFFFFF),
-            width: 1,
-          ),
-        ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-      elevatedButtonTheme: _elevatedButtonTheme(),
-      filledButtonTheme: _filledButtonTheme(),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        shape: CircleBorder(),
-      ),
-      chipTheme: ChipThemeData(
-        backgroundColor: const Color(0xFF24304A),
-        selectedColor: primaryBlue,
-        labelStyle: const TextStyle(color: _darkText, fontSize: 13),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        side: BorderSide.none,
-      ),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: _darkText,
-        contentTextStyle: const TextStyle(color: Color(0xFF1A2334)),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: _darkCard,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: const BorderSide(
-            color: Color(0x14FFFFFF),
-            width: 1,
-          ),
-        ),
-        titleTextStyle: const TextStyle(
-          color: _darkText,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-        ),
-        contentTextStyle: const TextStyle(
-          color: _darkSub,
-          fontSize: 15,
-          height: 1.5,
-        ),
-      ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: _darkCard,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        showDragHandle: true,
-      ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: primaryBlue,
-        linearTrackColor: Color(0xFF24304A),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: Color(0xFF26314A),
-        thickness: 1,
-        space: 1,
-      ),
-      inputDecorationTheme: _inputTheme(
-        fill: const Color(0xFF141D2E),
-        hint: _darkSub,
-      ),
-      tabBarTheme: const TabBarThemeData(
-        labelColor: _darkStrong,
-        unselectedLabelColor: _darkSub,
-        indicatorColor: primaryBlue,
-        labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-      ),
-      listTileTheme: const ListTileThemeData(
-        iconColor: primaryBlue,
-        textColor: _darkText,
-      ),
-    );
-  }
-
-  // ---------------- 共用部件
-
-  static TextTheme _textTheme(TextTheme base, Color text, Color sub) {
-    return base.copyWith(
-      displaySmall: TextStyle(
-        color: text,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.5,
-      ),
-      headlineMedium: TextStyle(
-        color: text,
-        fontWeight: FontWeight.w700,
-      ),
-      titleLarge: TextStyle(
-        color: text,
-        fontWeight: FontWeight.w700,
-      ),
-      titleMedium: TextStyle(
-        color: text,
-        fontWeight: FontWeight.w600,
-      ),
-      bodyLarge: TextStyle(
-        color: text,
-        fontSize: 16,
-      ),
-      bodyMedium: TextStyle(
-        color: sub,
-        fontSize: 14,
-      ),
-      labelLarge: const TextStyle(
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-
-  static ElevatedButtonThemeData _elevatedButtonTheme() {
-    return ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  static FilledButtonThemeData _filledButtonTheme() {
-    return FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  static InputDecorationTheme _inputTheme({
-    required Color fill,
-    required Color hint,
-  }) {
-    return InputDecorationTheme(
-      filled: true,
-      fillColor: fill,
-      hintStyle: TextStyle(color: hint),
-      labelStyle: TextStyle(color: hint),
-      prefixIconColor: hint,
-      suffixIconColor: hint,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: primaryBlue, width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    );
-  }
 }
 
-/// 自适应调色板：页面里所有随明暗变化的颜色都从这里取，
-/// 不要再直接引用 AppTheme.textDark / bgWhite 等固定值。
+/// 自适应调色板：唯一真相源是 Forui 主题，这里只做语义映射。
 class AppPalette {
   final Color text;
   final Color sub;
@@ -409,6 +75,7 @@ class AppPalette {
   final Color border;
   final LinearGradient page;
   final Color shadow;
+  final bool isDark;
 
   const AppPalette({
     required this.text,
@@ -421,44 +88,45 @@ class AppPalette {
     required this.border,
     required this.page,
     required this.shadow,
+    required this.isDark,
   });
 
-  static const light = AppPalette(
-    text: AppTheme.textDark,
-    sub: AppTheme.textGrey,
-    faint: AppTheme.textLight,
-    card: AppTheme.bgWhite,
-    nav: AppTheme.bgWhite,
-    chip: Color(0xB3FFFFFF),
-    strong: AppTheme.deepBlue,
-    border: Color(0x00000000),
-    page: AppTheme.bgGradient,
-    shadow: Color(0x0A000000),
-  );
-
-  static const dark = AppPalette(
-    text: Color(0xFFE9EFF6),
-    sub: Color(0xFF9AA9BC),
-    faint: Color(0xFF5F7186),
-    card: Color(0xFF1A2334),
-    nav: Color(0xFF141C2A),
-    chip: Color(0xB31A2334),
-    strong: Color(0xFF7FD0F7),
-    border: Color(0x14FFFFFF),
-    page: AppTheme.bgGradientDark,
-    shadow: Color(0x59000000),
-  );
-
   static AppPalette of(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark ? dark : light;
+    final colors = context.theme.colors;
+    if (Theme.of(context).brightness == Brightness.dark) {
+      return AppPalette(
+        text: colors.foreground,
+        sub: colors.mutedForeground,
+        faint: colors.mutedForeground.withValues(alpha: 0.6),
+        card: colors.card,
+        nav: colors.card,
+        chip: colors.card.withValues(alpha: 0.7),
+        strong: colors.primary,
+        border: colors.border,
+        page: AppTheme.bgGradientDark,
+        shadow: const Color(0x59000000),
+        isDark: true,
+      );
+    }
+    return AppPalette(
+      text: colors.foreground,
+      sub: colors.mutedForeground,
+      faint: colors.mutedForeground.withValues(alpha: 0.6),
+      card: colors.card,
+      nav: colors.card,
+      chip: colors.card.withValues(alpha: 0.7),
+      strong: colors.primary,
+      border: colors.border,
+      page: AppTheme.bgGradient,
+      shadow: const Color(0x0A000000),
+      isDark: false,
+    );
   }
-
-  bool get isDark => this == dark;
 }
 
 /// 圆角卡片装饰
 class CardDecoration {
-  /// 自适应卡片底（浅色白卡 / 深色 navy 卡 + 细边框）。
+  /// 自适应卡片底（取 Forui 的 card/border）。
   static BoxDecoration softOf(
     BuildContext context, {
     double radius = 20,
@@ -468,9 +136,10 @@ class CardDecoration {
     return BoxDecoration(
       color: p.card,
       borderRadius: BorderRadius.circular(radius),
-      border: borderColor != null
-          ? Border.all(color: borderColor, width: 1)
-          : Border.all(color: p.border, width: 1),
+      border: Border.all(
+        color: borderColor ?? p.border,
+        width: 1,
+      ),
       boxShadow: [
         BoxShadow(
           color: p.shadow,

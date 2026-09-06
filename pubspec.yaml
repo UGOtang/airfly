@@ -13,6 +13,7 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   file_picker: 12.2.0
+  forui: 0.25.0
   path_provider: ^2.1.5
   shared_preferences: ^2.3.3
   web_socket_channel: ^3.0.3

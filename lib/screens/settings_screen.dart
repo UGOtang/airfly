@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../controllers/app_controller.dart';
 import '../core/protocol.dart';
@@ -24,7 +25,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _apiKey;
   late final TextEditingController _name;
   bool _saving = false;
-  bool _obscureKey = true;
+
+  /// 各输入框在 init 时的快照：控制器异步读完磁盘后，只把
+  /// “用户没碰过”（仍等于快照）的框补成最新值，绝不覆盖用户输入。
+  late final Map<TextEditingController, String> _snapshot;
 
   @override
   void initState() {
@@ -35,10 +39,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _spaceKey = TextEditingController(text: c.spaceKey);
     _apiKey = TextEditingController(text: c.apiKey);
     _name = TextEditingController(text: c.deviceName);
+    _snapshot = {
+      _server: c.serverUrl,
+      _space: c.spaceId,
+      _spaceKey: c.spaceKey,
+      _apiKey: c.apiKey,
+      _name: c.deviceName,
+    };
+    c.addListener(_syncFromController);
+    _syncFromController();
+  }
+
+  void _syncFromController() {
+    if (!mounted) return;
+    final c = widget.controller;
+    if (!c.isInitialized) return;
+    // 延迟到帧后：build 过程中直接改 TextEditingController 会抛异常
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final fresh = {
+        _server: c.serverUrl,
+        _space: c.spaceId,
+        _spaceKey: c.spaceKey,
+        _apiKey: c.apiKey,
+        _name: c.deviceName,
+      };
+      fresh.forEach((ctrl, value) {
+        if (ctrl.text == _snapshot[ctrl] && ctrl.text != value) {
+          ctrl.text = value;
+        }
+        _snapshot[ctrl] = ctrl.text;
+      });
+    });
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_syncFromController);
     _server.dispose();
     _space.dispose();
     _spaceKey.dispose();
@@ -128,107 +165,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _connStateRow(c),
+          const SizedBox(height: 12),
+          _buildRecordRows(c),
           const SizedBox(height: 16),
-          TextField(
-            controller: _server,
+          FTextField(
+            key: const Key('f_server'),
+            control: FTextFieldControl.managed(controller: _server),
+            label: const Text('服务端地址'),
+            hint: 'ws://你的云服务器IP:8080/ws',
             keyboardType: TextInputType.url,
-            decoration: const InputDecoration(
-              labelText: '服务端地址',
-              hintText: 'ws://你的云服务器IP:8080/ws',
-              prefixIcon: Icon(Icons.dns_rounded),
-            ),
           ),
           const SizedBox(height: 12),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: TextField(
-                  controller: _space,
-                  decoration: const InputDecoration(
-                    labelText: '空间码',
-                    hintText: '如 my-space',
-                    prefixIcon: Icon(Icons.meeting_room_rounded),
-                  ),
+                child: FTextField(
+                  key: const Key('f_space'),
+                  control: FTextFieldControl.managed(controller: _space),
+                  label: const Text('空间码'),
+                  hint: '如 my-space',
                 ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: () {
+              FButton(
+                variant: .outline,
+                onPress: () {
                   _space.text = _randomSpace();
                 },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
                 child: const Text('随机'),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _spaceKey,
-            obscureText: _obscureKey,
-            decoration: InputDecoration(
-              labelText: '空间密码（可选）',
-              hintText: '首次加入即创建，之后须一致',
-              prefixIcon: const Icon(Icons.lock_outline_rounded),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscureKey
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_rounded,
-                ),
-                onPressed: () =>
-                    setState(() => _obscureKey = !_obscureKey),
-              ),
-            ),
+          FTextField.password(
+            key: const Key('f_space_key'),
+            control: FTextFieldControl.managed(controller: _spaceKey),
+            label: const Text('空间密码（可选）'),
+            hint: '首次加入即创建，之后须一致',
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _apiKey,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: '服务端密钥（可选）',
-              hintText: '与服务端 API_KEY 一致',
-              prefixIcon: Icon(Icons.key_rounded),
-            ),
+          FTextField.password(
+            key: const Key('f_api_key'),
+            control: FTextFieldControl.managed(controller: _apiKey),
+            label: const Text('服务端密钥（可选）'),
+            hint: '与服务端 API_KEY 一致',
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(
-              labelText: '本机显示名称',
-              prefixIcon: Icon(Icons.badge_rounded),
-            ),
+          FTextField(
+            key: const Key('f_name'),
+            control: FTextFieldControl.managed(controller: _name),
+            label: const Text('本机显示名称'),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _saving ? null : _save,
-            icon: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_rounded),
-            label: const Text('保存并重连'),
+          SizedBox(
+            width: double.infinity,
+            child: FButton(
+              onPress: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('保存并重连'),
+            ),
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () => c.disconnect(),
-            icon: const Icon(Icons.link_off_rounded),
-            label: const Text('断开连接'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppPalette.of(context).sub,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+          SizedBox(
+            width: double.infinity,
+            child: FButton(
+              variant: .outline,
+              onPress: () => c.disconnect(),
+              child: const Text('断开连接'),
             ),
           ),
         ],
@@ -309,6 +318,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
     const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
     final r = Random.secure();
     return List.generate(6, (_) => chars[r.nextInt(chars.length)]).join();
+  }
+
+  /// 当前记录（只读）：上次连接用的值都在这里，一眼可查。
+  Widget _buildRecordRows(AppController c) {
+    final rows = [
+      (Icons.dns_rounded, '服务端', c.serverUrl),
+      (Icons.meeting_room_rounded, '空间', c.spaceId),
+      (Icons.badge_rounded, '本机', c.deviceName),
+    ];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppPalette.of(context).chip,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          for (final (icon, label, value) in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                children: [
+                  Icon(icon, size: 16, color: AppPalette.of(context).faint),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppPalette.of(context).sub,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      value.isEmpty ? '未填写' : value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: value.isEmpty
+                            ? AppPalette.of(context).faint
+                            : AppPalette.of(context).text,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _save() async {
